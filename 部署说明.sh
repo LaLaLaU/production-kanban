@@ -1,0 +1,22 @@
+#!/bin/bash
+
+echo "=== 生产看板应用部署说明 ==="
+echo ""
+echo "由于网络限制，您可以通过以下方式访问应用："
+echo ""
+echo "1. 直接打开文件："
+echo "   - 找到项目目录: $(pwd)/dist/"
+echo "   - 双击 index.html 文件"
+echo ""
+echo "2. 复制到其他位置："
+echo "   - 将整个 dist 文件夹复制到任何位置"
+echo "   - 双击其中的 index.html 即可使用"
+echo ""
+echo "3. 内网部署："
+echo "   - 将 dist 文件夹内容放到 Web 服务器"
+echo "   - 通过浏览器访问服务器地址"
+echo ""
+echo "当前构建状态: 已完成"
+echo "文件位置: $(pwd)/dist/"
+echo ""
+ls -la /home/tgy20/chanpingenzong/production-kanban/dist/
