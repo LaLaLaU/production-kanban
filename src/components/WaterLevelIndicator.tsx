@@ -8,7 +8,6 @@ interface WaterLevelIndicatorProps {
 
 const WaterLevelIndicator: React.FC<WaterLevelIndicatorProps> = ({
   commitTime,
-  height,
   maxDays = 30
 }) => {
   // 计算等待天数
@@ -127,7 +126,6 @@ const WaterLevelIndicator: React.FC<WaterLevelIndicatorProps> = ({
       <div className="scale-lines">
         {Array.from({ length: 6 }, (_, i) => {
           const position = (i + 1) * (100 / 6) // 每5天一条线
-          const daysMark = Math.round((i + 1) * (maxDays / 6))
 
           return (
             <div
@@ -146,7 +144,7 @@ const WaterLevelIndicator: React.FC<WaterLevelIndicatorProps> = ({
         })}
       </div>
 
-      <style jsx>{`
+      <style>{`
         .water-wave {
           animation: wave 2s ease-in-out infinite;
         }

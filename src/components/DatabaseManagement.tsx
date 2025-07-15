@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { databaseAdapter, type StorageMode } from '../services/databaseAdapter'
-import { sqliteService } from '../services/sqliteService'
 
 interface StorageStats {
   mode: StorageMode
@@ -250,7 +249,7 @@ export const DatabaseManagement: React.FC = () => {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .database-management {
           background: white;
           border-radius: 8px;

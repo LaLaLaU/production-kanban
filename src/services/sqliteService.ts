@@ -2,7 +2,7 @@ import type { Database } from 'sql.js'
 import type { Task } from '../types'
 
 // 兼容的sql.js导入函数
-async function loadSqlJs() {
+async function loadSqlJs(): Promise<any> {
   try {
     // 优先使用本地的sql.js文件
     if (typeof window !== 'undefined') {
@@ -25,7 +25,7 @@ async function loadSqlJs() {
         document.head.appendChild(script)
       })
     }
-    
+
     // 服务器端或其他环境，尝试ES模块导入
     const sqlModule = await import('sql.js')
     return sqlModule.default || sqlModule
@@ -90,7 +90,7 @@ class SQLiteService {
           // 优先使用本地WASM文件，降级到CDN
           const localPath = `${this.config.wasmPath}${file}`
           console.log(`🔍 定位文件: ${file} -> ${localPath}`)
-          
+
           // 简单返回本地路径，如果失败会自动降级到CDN
           return localPath
         }
@@ -120,16 +120,16 @@ class SQLiteService {
       console.log('🏗️ 创建数据表...')
       await this.createTables()
       console.log('✅ 数据表创建完成')
-      
+
       this.isInitialized = true
       console.log('🎉 SQLite初始化完成')
-      
+
       return { success: true, data: true }
     } catch (error) {
       const errorMsg = `SQLite初始化失败: ${error instanceof Error ? error.message : String(error)}`
       console.error('❌', errorMsg)
       console.error('🔍 详细错误信息:', error)
-      
+
       // 检查是否是WASM加载问题
       if (error instanceof Error && error.message.includes('wasm')) {
         console.error('💡 可能是WASM文件加载问题，请检查:')
@@ -137,7 +137,7 @@ class SQLiteService {
         console.error('   2. sql-wasm.wasm 和 sql-wasm.js 文件是否存在')
         console.error('   3. 服务器是否正确配置了WASM MIME类型')
       }
-      
+
       return { success: false, error: errorMsg }
     }
   }
@@ -242,14 +242,14 @@ class SQLiteService {
       CREATE INDEX IF NOT EXISTS idx_system_logs_created_at ON system_logs(created_at);
 
       -- 插入默认师傅数据
-      INSERT OR IGNORE INTO masters (name, skill_level) VALUES 
+      INSERT OR IGNORE INTO masters (name, skill_level) VALUES
         ('潘敏', 3), ('黄尚斌', 3), ('钱伟', 2), ('蒋怀东', 3), ('江峰', 2),
         ('谢守刚', 3), ('周博', 2), ('秦龙', 2), ('王章良', 3), ('叶佩珺', 2),
         ('李雪', 2), ('昂洪涛', 3), ('刘庆', 2), ('王家龙', 2), ('叶建辉', 3),
         ('魏祯', 2), ('杨同', 2);
 
       -- 插入默认设置
-      INSERT OR IGNORE INTO settings (key, value, type, description) VALUES 
+      INSERT OR IGNORE INTO settings (key, value, type, description) VALUES
         ('default_coefficient', '1.2', 'number', '默认工时系数'),
         ('work_hours_per_day', '540', 'number', '每日工作时间(分钟)'),
         ('auto_assign', 'true', 'boolean', '启用智能分配'),
@@ -258,7 +258,7 @@ class SQLiteService {
         ('backup_interval', '24', 'number', '自动备份间隔(小时)');
 
       -- 记录数据库创建日志
-      INSERT INTO system_logs (level, message, details) VALUES 
+      INSERT INTO system_logs (level, message, details) VALUES
         ('info', '数据库表结构创建完成', '{"version": ${this.config.version}, "timestamp": "' || datetime('now') || '"}');
     `
 
@@ -317,12 +317,12 @@ class SQLiteService {
       // 获取分页数据
       const offset = (page - 1) * pageSize
       const dataSQL = `
-        SELECT * FROM tasks 
+        SELECT * FROM tasks
         ${whereClause}
         ORDER BY priority DESC, commit_time DESC, created_at DESC
         LIMIT ? OFFSET ?
       `
-      
+
       const result = this.db!.exec(dataSQL, [...params, pageSize, offset])
       const tasks = this.parseTaskResults(result)
 
@@ -368,9 +368,9 @@ class SQLiteService {
       // 记录变更历史
       if (recordHistory) {
         await this.logTaskChange(
-          task.id, 
-          isUpdate ? 'updated' : 'created', 
-          isUpdate ? existingTask.data : null, 
+          task.id,
+          isUpdate ? 'updated' : 'created',
+          isUpdate ? existingTask.data : null,
           task
         )
       }
@@ -379,10 +379,10 @@ class SQLiteService {
       await this.updateMasterStats(task.masterName)
 
       await this.saveToLocalStorage()
-      
-      return { 
-        success: true, 
-        data: true, 
+
+      return {
+        success: true,
+        data: true,
         rowsAffected: 1
       }
     } catch (error) {
@@ -398,12 +398,12 @@ class SQLiteService {
       if (!this.db) await this.init()
 
       console.log(`🔄 开始批量保存 ${tasks.length} 个任务...`)
-      
+
       this.db!.exec('BEGIN TRANSACTION')
-      
+
       let successCount = 0
       const errors: string[] = []
-      
+
       // 使用同步的SQL操作替代异步的saveTask
       for (const task of tasks) {
         try {
@@ -414,24 +414,24 @@ class SQLiteService {
               status, priority, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
           `
-          
+
           this.db!.run(sql, [
             task.id, task.productName, task.productCode || null, task.workHours,
             task.coefficient || 1, task.masterName, task.batchNumber,
             task.clientName, task.commitTime, task.status, task.priority || 1
           ])
-          
+
           successCount++
         } catch (taskError) {
           errors.push(`任务 ${task.id} 保存失败: ${taskError}`)
           console.error(`任务 ${task.id} 保存失败:`, taskError)
         }
       }
-      
+
       // 提交事务
       this.db!.exec('COMMIT')
       console.log(`✅ 事务提交完成，成功保存 ${successCount} 个任务`)
-      
+
       // 记录批量操作历史
       await this.logSystemEvent('info', `批量保存任务完成`, {
         totalTasks: tasks.length,
@@ -439,7 +439,7 @@ class SQLiteService {
         failedCount: tasks.length - successCount,
         errors: errors.slice(0, 10) // 只记录前10个错误
       })
-      
+
       // 保存到localStorage
       await this.saveToLocalStorage()
       console.log(`💾 数据已保存到localStorage`)
@@ -456,10 +456,10 @@ class SQLiteService {
         console.warn(`⚠️ 批量保存完成，但有 ${errors.length} 个任务失败`)
       }
 
-      return { 
-        success: true, 
-        data: true, 
-        rowsAffected: successCount 
+      return {
+        success: true,
+        data: true,
+        rowsAffected: successCount
       }
     } catch (error) {
       try {
@@ -468,7 +468,7 @@ class SQLiteService {
       } catch (rollbackError) {
         console.error('❌ 事务回滚也失败:', rollbackError)
       }
-      
+
       const errorMsg = `批量保存任务失败: ${error instanceof Error ? error.message : String(error)}`
       console.error('❌ 批量保存失败:', errorMsg)
       await this.logError('saveTasksBatch', errorMsg, { taskCount: tasks.length })
@@ -483,12 +483,12 @@ class SQLiteService {
 
       const sql = 'SELECT * FROM tasks WHERE id = ?'
       const result = this.db!.exec(sql, [taskId])
-      
+
       if (result.length > 0 && result[0].values.length > 0) {
         const tasks = this.parseTaskResults(result)
         return { success: true, data: tasks[0] }
       }
-      
+
       return { success: true, data: null }
     } catch (error) {
       const errorMsg = `获取任务失败: ${error instanceof Error ? error.message : String(error)}`
@@ -503,7 +503,7 @@ class SQLiteService {
 
       // 先获取任务信息用于记录历史
       const taskResult = await this.getTaskById(taskId)
-      
+
       const sql = 'DELETE FROM tasks WHERE id = ?'
       this.db!.run(sql, [taskId])
 
@@ -512,10 +512,10 @@ class SQLiteService {
       }
 
       await this.saveToLocalStorage()
-      
-      return { 
-        success: true, 
-        data: true, 
+
+      return {
+        success: true,
+        data: true,
         rowsAffected: 1
       }
     } catch (error) {
@@ -560,7 +560,7 @@ class SQLiteService {
 
       // 总体统计
       const overallSQL = `
-        SELECT 
+        SELECT
           COUNT(*) as total_tasks,
           SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
           SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_tasks,
@@ -568,14 +568,14 @@ class SQLiteService {
           AVG(CASE WHEN status = 'completed' THEN work_hours * coefficient ELSE NULL END) as avg_completion_time
         FROM tasks ${whereClause}
       `
-      
+
       const overallResult = this.db!.exec(overallSQL, params)
-      const [totalTasks, completedTasks, pendingTasks, inProgressTasks, avgCompletionTime] = 
+      const [totalTasks, completedTasks, pendingTasks, inProgressTasks, avgCompletionTime] =
         overallResult[0]?.values[0] || [0, 0, 0, 0, 0]
 
       // 师傅生产力统计
       const masterSQL = `
-        SELECT 
+        SELECT
           master_name,
           COUNT(*) as total_tasks,
           SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
@@ -586,13 +586,13 @@ class SQLiteService {
         GROUP BY master_name
         ORDER BY efficiency DESC, completed_tasks DESC
       `
-      
+
       const masterResult = this.db!.exec(masterSQL, params)
       const masterProductivity = this.parseMasterProductivity(masterResult)
 
       // 每日进度统计
       const dailySQL = `
-        SELECT 
+        SELECT
           DATE(commit_time) as date,
           COUNT(*) as total,
           SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
@@ -602,7 +602,7 @@ class SQLiteService {
         ORDER BY date DESC
         LIMIT 30
       `
-      
+
       const dailyResult = this.db!.exec(dailySQL, params)
       const dailyProgress = this.parseDailyProgress(dailyResult)
 
@@ -636,7 +636,7 @@ class SQLiteService {
 
       // 基于历史分配记录的推荐算法
       const sql = `
-        SELECT 
+        SELECT
           ma.master_name,
           ma.assignment_count,
           ma.success_rate,
@@ -645,9 +645,9 @@ class SQLiteService {
           m.total_tasks,
           m.completed_tasks,
           (
-            ma.success_rate * 0.4 + 
-            (CASE WHEN ma.avg_completion_time > 0 THEN (100 - ma.avg_completion_time/60) ELSE 50 END) * 0.3 + 
-            (ma.assignment_count * 2) * 0.2 + 
+            ma.success_rate * 0.4 +
+            (CASE WHEN ma.avg_completion_time > 0 THEN (100 - ma.avg_completion_time/60) ELSE 50 END) * 0.3 +
+            (ma.assignment_count * 2) * 0.2 +
             m.skill_level * 10 * 0.1
           ) as score
         FROM master_assignments ma
@@ -657,14 +657,14 @@ class SQLiteService {
         ORDER BY score DESC
         LIMIT 5
       `
-      
+
       const params = productCode ? [productName, productCode] : [productName]
       const result = this.db!.exec(sql, params)
-      
+
       if (result.length > 0 && result[0].values.length > 0) {
         const recommendations = this.parseMasterRecommendations(result)
         const best = recommendations[0]
-        
+
         return {
           success: true,
           data: {
@@ -683,14 +683,14 @@ class SQLiteService {
       // 如果没有历史记录，返回工作负载最轻的师傅
       const fallbackSQL = `
         SELECT name, total_tasks, skill_level
-        FROM masters 
+        FROM masters
         WHERE active = 1
         ORDER BY total_tasks ASC, skill_level DESC
         LIMIT 3
       `
-      
+
       const fallbackResult = this.db!.exec(fallbackSQL)
-      
+
       if (fallbackResult.length > 0 && fallbackResult[0].values.length > 0) {
         const fallbackMaster = fallbackResult[0].values[0][0] as string
         const alternatives = fallbackResult[0].values.slice(1).map(row => ({
@@ -698,7 +698,7 @@ class SQLiteService {
           score: 30 - (row[1] as number), // 任务数越少分数越高
           reason: `当前任务负载较轻(${row[1]}个任务)`
         }))
-        
+
         return {
           success: true,
           data: {
@@ -734,7 +734,7 @@ class SQLiteService {
 
       const data = this.db!.export()
       const base64 = btoa(String.fromCharCode(...data))
-      
+
       const exportPackage = {
         type: 'sqlite_database',
         version: this.config.version,
@@ -753,9 +753,9 @@ class SQLiteService {
         tables: exportPackage.metadata.tables.length
       })
 
-      return { 
-        success: true, 
-        data: JSON.stringify(exportPackage, null, 2) 
+      return {
+        success: true,
+        data: JSON.stringify(exportPackage, null, 2)
       }
     } catch (error) {
       const errorMsg = `数据库导出失败: ${error instanceof Error ? error.message : String(error)}`
@@ -768,7 +768,7 @@ class SQLiteService {
   async importDatabase(jsonData: string): Promise<QueryResult<boolean>> {
     try {
       const importPackage = JSON.parse(jsonData)
-      
+
       if (importPackage.type !== 'sqlite_database') {
         throw new Error('不支持的导入格式')
       }
@@ -776,20 +776,20 @@ class SQLiteService {
       const uint8Array = new Uint8Array(
         atob(importPackage.data).split('').map(char => char.charCodeAt(0))
       )
-      
+
       // 备份当前数据库
       await this.createBackup()
-      
+
       // 导入新数据库
       this.db = new this.SQL.Database(uint8Array)
       await this.saveToLocalStorage()
-      
+
       await this.logSystemEvent('info', '数据库导入完成', {
         version: importPackage.version,
         tables: importPackage.metadata?.tables?.length || 0,
         fileSize: importPackage.metadata?.fileSize || 0
       })
-      
+
       return { success: true, data: true }
     } catch (error) {
       const errorMsg = `数据库导入失败: ${error instanceof Error ? error.message : String(error)}`
@@ -808,7 +808,7 @@ class SQLiteService {
       const data = this.db.export()
       const base64 = btoa(String.fromCharCode(...data))
       localStorage.setItem('sqlite_db_data', base64)
-      
+
       // 更新最后保存时间
       localStorage.setItem('sqlite_last_save', new Date().toISOString())
     } catch (error) {
@@ -825,12 +825,12 @@ class SQLiteService {
       const base64 = btoa(String.fromCharCode(...data))
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       localStorage.setItem(`sqlite_backup_${timestamp}`, base64)
-      
+
       // 只保留最近5个备份
       const backupKeys = Object.keys(localStorage)
         .filter(key => key.startsWith('sqlite_backup_'))
         .sort()
-      
+
       if (backupKeys.length > 5) {
         backupKeys.slice(0, -5).forEach(key => {
           localStorage.removeItem(key)
@@ -848,7 +848,7 @@ class SQLiteService {
         INSERT INTO task_history (task_id, action, old_values, new_values, created_at)
         VALUES (?, ?, ?, ?, datetime('now'))
       `
-      
+
       this.db!.run(sql, [
         taskId,
         action,
@@ -867,7 +867,7 @@ class SQLiteService {
         INSERT INTO system_logs (level, message, details, created_at)
         VALUES (?, ?, ?, datetime('now'))
       `
-      
+
       this.db!.run(sql, [
         level,
         message,
@@ -893,13 +893,13 @@ class SQLiteService {
       if (masterName === '待分配') return
 
       const sql = `
-        UPDATE masters SET 
+        UPDATE masters SET
           total_tasks = (SELECT COUNT(*) FROM tasks WHERE master_name = ?),
           completed_tasks = (SELECT COUNT(*) FROM tasks WHERE master_name = ? AND status = 'completed'),
           updated_at = datetime('now')
         WHERE name = ?
       `
-      
+
       this.db!.run(sql, [masterName, masterName, masterName])
     } catch (error) {
       console.error('更新师傅统计失败:', error)
@@ -909,7 +909,7 @@ class SQLiteService {
   // 解析任务查询结果
   private parseTaskResults(result: any[]): Task[] {
     if (!result.length || !result[0].values.length) return []
-    
+
     const columns = result[0].columns
     return result[0].values.map((row: any[]) => {
       const task: any = {}
@@ -942,7 +942,7 @@ class SQLiteService {
     efficiency: number
   }> {
     if (!result.length || !result[0].values.length) return []
-    
+
     return result[0].values.map((row: any[]) => ({
       masterName: row[0],
       totalTasks: row[1],
@@ -960,7 +960,7 @@ class SQLiteService {
     percentage: number
   }> {
     if (!result.length || !result[0].values.length) return []
-    
+
     return result[0].values.map((row: any[]) => ({
       date: row[0],
       total: row[1],
@@ -977,7 +977,7 @@ class SQLiteService {
     score: number
   }> {
     if (!result.length || !result[0].values.length) return []
-    
+
     return result[0].values.map((row: any[]) => ({
       masterName: row[0],
       assignmentCount: row[1],
@@ -997,7 +997,7 @@ class SQLiteService {
   private async getRecordCounts(): Promise<Record<string, number>> {
     const tables = await this.getTableInfo()
     const counts: Record<string, number> = {}
-    
+
     for (const table of tables) {
       try {
         const result = this.db!.exec(`SELECT COUNT(*) FROM ${table}`)
@@ -1006,7 +1006,7 @@ class SQLiteService {
         counts[table] = 0
       }
     }
-    
+
     return counts
   }
 
@@ -1025,7 +1025,7 @@ class SQLiteService {
   }>> {
     try {
       const isInitialized = this.isInitialized && this.db !== null
-      
+
       if (!isInitialized) {
         return {
           success: true,
@@ -1064,4 +1064,4 @@ class SQLiteService {
 export const sqliteService = new SQLiteService()
 
 // 导出类型
-export type { QueryResult, PaginatedResult }
+export type { PaginatedResult, QueryResult }

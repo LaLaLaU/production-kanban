@@ -319,46 +319,7 @@ function App() {
     }
   }
 
-  // 处理数据库导出
-  const handleDatabaseExport = async () => {
-    try {
-      if (dbStatus.isInitialized) {
-        const result = await sqliteService.exportDatabase()
-        if (result.success) {
-          const blob = new Blob([result.data!], { type: 'application/json' })
-          const url = URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = `数据库完整备份_${new Date().toISOString().split('T')[0]}.json`
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link)
-          URL.revokeObjectURL(url)
 
-          message.success('数据库备份导出成功')
-        } else {
-          throw new Error(result.error)
-        }
-      } else {
-        // localStorage模式导出
-        const data = LocalStorageService.exportData()
-        const blob = new Blob([data], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `本地数据备份_${new Date().toISOString().split('T')[0]}.json`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
-
-        message.success('本地数据备份导出成功')
-      }
-    } catch (error) {
-      console.error('数据库导出失败:', error)
-      message.error('数据库导出失败')
-    }
-  }
 
   // 创建便携包
   const handleCreatePortablePackage = async () => {

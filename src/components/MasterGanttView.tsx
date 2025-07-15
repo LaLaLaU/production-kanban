@@ -1,4 +1,4 @@
-import { ExclamationCircleFilled } from '@ant-design/icons'
+
 import { Card, Col, Row, Space, Tooltip, Typography } from 'antd'
 import React, { useEffect, useMemo, useState } from 'react'
 import type { Task } from '../types'
@@ -67,7 +67,7 @@ const TaskBar: React.FC<{
   onEdit?: (task: Task) => void
   barHeight?: number // 任务条高度
   pixelsPerMinute?: number // 每分钟像素数
-}> = ({ task, maxWidth, onEdit, barHeight = 16, pixelsPerMinute = 1.5 }) => {
+}> = ({ task, onEdit, barHeight = 16, pixelsPerMinute = 1.5 }) => {
   const taskCoefficient = task.coefficient || 1 // 使用任务自己的系数
   const adjustedWorkHours = task.workHours * taskCoefficient
 
@@ -111,14 +111,12 @@ const TaskBar: React.FC<{
         style={{
           width: `${width}px`,
           height: `${barHeight}px`,
-          backgroundColor: task.masterName === '待分配' ? '#fff2f0' :
-                          isUrgent ? 'rgba(255, 77, 79, 0.15)' : 'rgba(200, 200, 200, 0.3)',
+          backgroundColor: task.masterName === '待分配' ? '#fff2f0' : 'rgba(200, 200, 200, 0.3)',
           borderRadius: '3px',
           margin: '1px 3px 1px 0',
           position: 'relative',
           cursor: 'pointer',
           border: task.masterName === '待分配' ? '2px solid #ff4d4f' :
-                 isUrgent ? '2px solid #ff4d4f' :
                  task.status === 'inProgress' ? '1px solid #1890ff' : `1px solid ${taskColor}`,
           opacity: task.status === 'completed' ? 0.7 : 1,
           display: 'inline-block',
@@ -135,30 +133,17 @@ const TaskBar: React.FC<{
           width={width}
           height={barHeight}
           maxDays={4}
+          isUrgent={isUrgent}
         />
 
-        {isUrgent && (
-          <ExclamationCircleFilled
-            style={{
-              position: 'absolute',
-              top: '-2px',
-              right: '-2px',
-              color: '#ff4d4f',
-              fontSize: '9px',
-              backgroundColor: 'white',
-              borderRadius: '50%',
-              zIndex: 2
-            }}
-          />
-        )}
+
         <div
           style={{
             position: 'absolute',
-            top: '50%',
+            bottom: '2px',
             left: '4px',
-            transform: 'translateY(-50%)',
             color: task.masterName === '待分配' ? '#ff4d4f' :
-                   isUrgent ? '#ff4d4f' : 'white',
+                   isUrgent ? 'white' : 'white',
             fontSize: Math.max(8, Math.min(14, barHeight - 4)) + 'px',
             fontWeight: 'bold',
             whiteSpace: 'nowrap',
@@ -166,7 +151,7 @@ const TaskBar: React.FC<{
             textOverflow: 'ellipsis',
             maxWidth: `${width - 20}px`,
             textShadow: task.masterName === '待分配' ? 'none' :
-                       isUrgent ? 'none' : '1px 1px 1px rgba(0,0,0,0.5)',
+                       isUrgent ? '1px 1px 1px rgba(0,0,0,0.5)' : '1px 1px 1px rgba(0,0,0,0.5)',
             zIndex: 1
           }}
         >
@@ -407,7 +392,7 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
                 4天+
               </div>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px' }}>
-                <ExclamationCircleFilled style={{ color: '#ff4d4f', marginRight: '4px' }} />
+                <div style={{ width: '16px', height: '16px', backgroundColor: 'rgba(0, 0, 0, 0.8)', marginRight: '4px', borderRadius: '2px' }} />
                 紧急任务
               </div>
             </Space>

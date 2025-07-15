@@ -2,6 +2,7 @@ import { CalendarOutlined, ClockCircleOutlined, UserOutlined } from '@ant-design
 import { Card, Space, Tag, Typography } from 'antd'
 import React from 'react'
 import type { Task } from '../types'
+import WaterLevelIndicator from './WaterLevelIndicator'
 
 const { Text } = Typography
 

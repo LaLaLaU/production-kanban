@@ -5,13 +5,13 @@ interface GanttWaterLevelProps {
   width: number
   height: number
   maxDays?: number
+  isUrgent?: boolean
 }
 
 const GanttWaterLevel: React.FC<GanttWaterLevelProps> = ({
   commitTime,
-  width,
-  height,
-  maxDays = 4
+  maxDays = 4,
+  isUrgent = false
 }) => {
   // 计算等待天数
   const calculateWaitingDays = () => {
@@ -58,6 +58,11 @@ const GanttWaterLevel: React.FC<GanttWaterLevelProps> = ({
 
   // 根据等待天数获取颜色
   const getWaterColor = () => {
+    // 如果是紧急任务，强制使用黑色
+    if (isUrgent) {
+      return 'rgba(0, 0, 0, 0.8)'
+    }
+
     const waitingDays = calculateWaitingDays()
     const ratio = waitingDays / maxDays
 
