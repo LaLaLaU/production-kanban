@@ -33,12 +33,16 @@ const TaskBar: React.FC<{
   maxWidth: number
   onEdit?: (task: Task) => void
   barHeight?: number // 任务条高度
-}> = ({ task, maxWidth, onEdit, barHeight = 16 }) => {
+  pixelsPerMinute?: number // 每分钟像素数
+}> = ({ task, maxWidth, onEdit, barHeight = 16, pixelsPerMinute = 1.5 }) => {
   const taskCoefficient = task.coefficient || 1 // 使用任务自己的系数
   const adjustedWorkHours = task.workHours * taskCoefficient
-  // 更精确的工时长度计算：每分钟对应1.5px，确保工时差异明显
-  const baseWidth = adjustedWorkHours * 1.5
-  const width = Math.max(60, Math.min(maxWidth, baseWidth)) // 最小60px以便显示任务名
+
+        // 使用自适应像素宽度计算，支持横向滚动
+  const baseWidth = adjustedWorkHours * pixelsPerMinute
+  const width = Math.max(60, baseWidth) // 最小60px，不限制最大宽度以支持滚动
+
+
   const color = getPriorityColor(task.priority)
   const isUrgent = task.priority >= 8
 
@@ -141,7 +145,8 @@ const MasterRow: React.FC<{
   tasks: Task[]
   onEditTask?: (task: Task) => void
   rowHeight: number
-}> = ({ masterName, tasks, onEditTask, rowHeight }) => {
+  pixelsPerMinute: number
+}> = ({ masterName, tasks, onEditTask, rowHeight, pixelsPerMinute }) => {
   // 按委托时间排序任务
   const sortedTasks = useMemo(() => {
     return tasks
@@ -187,22 +192,37 @@ const MasterRow: React.FC<{
           right: 0,
           height: '100%',
           borderBottom: '1px solid #f5f5f5',
-          background: 'linear-gradient(to right, transparent 0%, transparent calc(100% - 1px), #e8e8e8 100%)',
-          backgroundSize: '75px 100%', // 每50分钟一个刻度(50*1.5=75px)
           pointerEvents: 'none',
           zIndex: 1
-        }} />
-        <div style={{
-          position: 'relative',
-          zIndex: 2,
-          width: '100%',
-          overflowX: 'auto',
-          overflowY: 'hidden',
-          whiteSpace: 'nowrap',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center'
         }}>
+          {/* 背景刻度线 - 最大显示600分钟 */}
+          {Array.from({ length: 12 }, (_, i) => {
+            const leftPosition = i * 50 * pixelsPerMinute // 每50分钟一个刻度
+            return (
+              <div key={i} style={{
+                position: 'absolute',
+                left: `${leftPosition}px`,
+                top: 0,
+                bottom: 0,
+                width: '1px',
+                backgroundColor: '#e8e8e8',
+                pointerEvents: 'none'
+              }} />
+            )
+          })}
+        </div>
+                <div style={{
+            position: 'relative',
+            zIndex: 2,
+            width: '100%',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            whiteSpace: 'nowrap',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+        >
           {sortedTasks.length === 0 ? (
             <Text type="secondary" style={{ fontSize: rowHeight < 30 ? '10px' : '11px', fontStyle: 'italic' }}>
               暂无任务
@@ -212,9 +232,10 @@ const MasterRow: React.FC<{
               <TaskBar
                 key={task.id}
                 task={task}
-                maxWidth={400}
+                maxWidth={999999} // 不限制最大宽度，支持横向滚动
                 onEdit={onEditTask}
                 barHeight={Math.max(14, rowHeight - 8)} // 调整任务条高度，保留上下边距
+                pixelsPerMinute={pixelsPerMinute}
               />
             ))
           )}
@@ -228,10 +249,11 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [containerHeight, setContainerHeight] = useState(0)
+  const [containerWidth, setContainerWidth] = useState(0)
 
-  // 计算可用高度
+  // 计算可用高度和宽度
   useEffect(() => {
-    const updateHeight = () => {
+    const updateDimensions = () => {
       const contentHeight = window.innerHeight - 64 // 减去Header高度
       const statsCardHeight = 80 // 统计卡片高度
       const cardPadding = 48 // 卡片内外边距
@@ -239,11 +261,18 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
       const containerPadding = 32 // 容器内边距
       const availableHeight = contentHeight - statsCardHeight - cardPadding - rulerHeight - containerPadding
       setContainerHeight(Math.max(400, availableHeight)) // 最小400px
+
+      // 计算可用宽度
+      const contentWidth = window.innerWidth - 32 // 减去页面边距
+      const masterNameWidth = 120 // 师傅名称列宽度
+      const borderWidth = 24 // 边框和间距
+      const availableWidth = contentWidth - masterNameWidth - borderWidth - cardPadding
+      setContainerWidth(Math.max(600, availableWidth)) // 最小600px
     }
 
-    updateHeight()
-    window.addEventListener('resize', updateHeight)
-    return () => window.removeEventListener('resize', updateHeight)
+    updateDimensions()
+    window.addEventListener('resize', updateDimensions)
+    return () => window.removeEventListener('resize', updateDimensions)
   }, [])
 
   // 计算每行的高度
@@ -252,6 +281,12 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
     const calculatedHeight = Math.floor(containerHeight / MASTERS.length)
     return Math.max(25, Math.min(50, calculatedHeight)) // 最小25px，最大50px
   }, [containerHeight])
+
+  // 计算自适应的像素比例 - 600分钟填满可用宽度
+  const pixelsPerMinute = useMemo(() => {
+    if (containerWidth === 0) return 1.5 // 默认比例
+    return containerWidth / 600 // 600分钟填满可用宽度
+  }, [containerWidth])
 
   const handleEditTask = (task: Task) => {
     setEditingTask(task)
@@ -350,22 +385,40 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
                 left: 12,
                 right: 0,
                 height: '100%',
-                backgroundImage: 'repeating-linear-gradient(to right, transparent 0px, transparent 74px, #d9d9d9 74px, #d9d9d9 75px)',
                 pointerEvents: 'none'
               }}>
-                {Array.from({ length: 20 }, (_, i) => (
-                  <div key={i} style={{
-                    position: 'absolute',
-                    left: `${i * 75}px`,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    fontSize: '10px',
-                    color: '#666',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {i * 50}分钟
-                  </div>
-                ))}
+                {/* 背景刻度线 - 最大显示600分钟 */}
+                {Array.from({ length: 12 }, (_, i) => {
+                  const leftPosition = i * 50 * pixelsPerMinute // 每50分钟一个刻度
+                  return (
+                    <div key={`line-${i}`} style={{
+                      position: 'absolute',
+                      left: `${leftPosition}px`,
+                      top: 0,
+                      bottom: 0,
+                      width: '1px',
+                      backgroundColor: '#d9d9d9',
+                      pointerEvents: 'none'
+                    }} />
+                  )
+                })}
+                {/* 刻度标签 - 最大显示600分钟 */}
+                {Array.from({ length: 12 }, (_, i) => {
+                  const leftPosition = i * 50 * pixelsPerMinute // 每50分钟一个刻度
+                  return (
+                    <div key={`label-${i}`} style={{
+                      position: 'absolute',
+                      left: `${leftPosition}px`,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      fontSize: '10px',
+                      color: '#666',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {i * 50}分钟
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -383,6 +436,7 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
                 tasks={tasks}
                 onEditTask={handleEditTask}
                 rowHeight={rowHeight}
+                pixelsPerMinute={pixelsPerMinute}
               />
             ))}
           </div>
