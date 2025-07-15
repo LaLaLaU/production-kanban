@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据库诊断工具</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .data-table th {
+            background-color: #f8f9fa;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 生产看板系统数据库诊断工具</h1>
+        <div id="status">正在检查数据库状态...</div>
+
+        <div style="margin: 20px 0;">
+            <button onclick="checkAll()">🔄 重新检查</button>
+            <button onclick="triggerMigration()">🔄 触发数据迁移</button>
+            <button onclick="clearAllData()">🗑️ 清除所有数据</button>
+            <button onclick="exportData()">📤 导出数据</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📊 数据库状态</h2>
+        <div id="dbStatus"></div>
+    </div>
+
+    <div class="container">
+        <h2>📋 任务数据</h2>
+        <div id="taskData"></div>
+    </div>
+
+    <div class="container">
+        <h2>👨‍🔧 师傅数据</h2>
+        <div id="masterData"></div>
+    </div>
+
+    <div class="container">
+        <h2>🔧 操作日志</h2>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        let logs = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push(`[${timestamp}] ${message}`);
+            updateLogs();
+            console.log(message);
+        }
+
+        function updateLogs() {
+            const logsDiv = document.getElementById('logs');
+            logsDiv.innerHTML = '<pre>' + logs.slice(-20).join('\n') + '</pre>';
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
+        async function checkLocalStorage() {
+            log('检查localStorage数据...');
+
+            // 检查原始任务数据
+            const tasks = JSON.parse(localStorage.getItem('kanban_tasks') || '[]');
+            const settings = JSON.parse(localStorage.getItem('kanban_settings') || '{}');
+            const masterAssignments = JSON.parse(localStorage.getItem('kanban_master_assignments') || '[]');
+            const sqliteData = localStorage.getItem('sqlite_db_data');
+
+            const dbStatusDiv = document.getElementById('dbStatus');
+            dbStatusDiv.innerHTML = `
+                <table class="data-table">
+                    <tr><th>数据类型</th><th>数量/状态</th><th>大小</th></tr>
+                    <tr><td>localStorage任务</td><td>${tasks.length}</td><td>${JSON.stringify(tasks).length} 字符</td></tr>
+                    <tr><td>localStorage设置</td><td>${Object.keys(settings).length}</td><td>${JSON.stringify(settings).length} 字符</td></tr>
+                    <tr><td>师傅分配记录</td><td>${masterAssignments.length}</td><td>${JSON.stringify(masterAssignments).length} 字符</td></tr>
+                    <tr><td>SQLite数据库</td><td>${sqliteData ? '存在' : '不存在'}</td><td>${sqliteData ? (sqliteData.length / 1024).toFixed(2) + ' KB' : '0 KB'}</td></tr>
+                </table>
+            `;
+
+            // 显示任务数据
+            const taskDataDiv = document.getElementById('taskData');
+            if (tasks.length > 0) {
+                const taskTable = tasks.slice(0, 10).map(task =>
+                    `<tr><td>${task.id}</td><td>${task.productName}</td><td>${task.masterName}</td><td>${task.status}</td></tr>`
+                ).join('');
+                taskDataDiv.innerHTML = `
+                    <p>找到 ${tasks.length} 个任务（显示前10个）：</p>
+                    <table class="data-table">
+                        <tr><th>ID</th><th>产品名称</th><th>师傅</th><th>状态</th></tr>
+                        ${taskTable}
+                    </table>
+                `;
+            } else {
+                taskDataDiv.innerHTML = '<div class="warning">没有找到localStorage中的任务数据</div>';
+            }
+
+            // 显示师傅数据
+            const masterDataDiv = document.getElementById('masterData');
+            if (masterAssignments.length > 0) {
+                const masterTable = masterAssignments.slice(0, 10).map(assignment =>
+                    `<tr><td>${assignment.productName}</td><td>${assignment.masterName}</td><td>${assignment.confidence || 'N/A'}</td></tr>`
+                ).join('');
+                masterDataDiv.innerHTML = `
+                    <p>找到 ${masterAssignments.length} 个师傅分配记录（显示前10个）：</p>
+                    <table class="data-table">
+                        <tr><th>产品名称</th><th>师傅</th><th>置信度</th></tr>
+                        ${masterTable}
+                    </table>
+                `;
+            } else {
+                masterDataDiv.innerHTML = '<div class="warning">没有找到师傅分配记录</div>';
+            }
+
+            return {
+                hasLocalStorageTasks: tasks.length > 0,
+                hasSQLiteData: !!sqliteData,
+                taskCount: tasks.length,
+                tasks: tasks
+            };
+        }
+
+        async function triggerMigration() {
+            log('开始手动触发数据迁移...');
+            showStatus('正在触发数据迁移...', 'info');
+
+            try {
+                // 这里需要调用实际的迁移函数
+                // 由于我们在诊断页面，需要重新加载主应用的迁移逻辑
+                showStatus('数据迁移需要在主应用中执行，请返回主页面并刷新', 'warning');
+                log('请返回主应用页面（http://localhost:3001）并刷新页面以触发自动迁移');
+            } catch (error) {
+                log('迁移失败: ' + error.message);
+                showStatus('迁移失败: ' + error.message, 'error');
+            }
+        }
+
+        async function clearAllData() {
+            if (confirm('确定要清除所有数据吗？这个操作不可逆！')) {
+                log('清除所有数据...');
+                localStorage.removeItem('kanban_tasks');
+                localStorage.removeItem('kanban_settings');
+                localStorage.removeItem('kanban_master_assignments');
+                localStorage.removeItem('kanban_import_settings');
+                localStorage.removeItem('sqlite_db_data');
+
+                // 清除所有以 kanban_ 开头的项目
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith('kanban_') || key.startsWith('sqlite_') || key.startsWith('localStorage_backup_')) {
+                        localStorage.removeItem(key);
+                    }
+                });
+
+                showStatus('所有数据已清除', 'success');
+                log('所有数据已清除');
+                await checkAll();
+            }
+        }
+
+        async function exportData() {
+            log('导出数据...');
+            const data = await checkLocalStorage();
+
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                localStorage: {
+                    tasks: JSON.parse(localStorage.getItem('kanban_tasks') || '[]'),
+                    settings: JSON.parse(localStorage.getItem('kanban_settings') || '{}'),
+                    masterAssignments: JSON.parse(localStorage.getItem('kanban_master_assignments') || '[]'),
+                    importSettings: JSON.parse(localStorage.getItem('kanban_import_settings') || '{}')
+                },
+                sqliteData: localStorage.getItem('sqlite_db_data') ? 'exists' : 'not_exists'
+            };
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `kanban_data_export_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            log('数据导出完成');
+        }
+
+        async function checkAll() {
+            log('开始全面检查...');
+            showStatus('正在检查数据库状态...', 'info');
+
+            const result = await checkLocalStorage();
+
+            if (result.hasLocalStorageTasks && !result.hasSQLiteData) {
+                showStatus('发现localStorage中有任务数据，但SQLite数据库为空。建议触发数据迁移。', 'warning');
+            } else if (!result.hasLocalStorageTasks && result.hasSQLiteData) {
+                showStatus('SQLite数据库存在，但localStorage中没有任务数据。数据可能已迁移。', 'success');
+            } else if (result.hasLocalStorageTasks && result.hasSQLiteData) {
+                showStatus('localStorage和SQLite都有数据，请检查数据同步状态。', 'info');
+            } else {
+                showStatus('没有找到任何任务数据。', 'error');
+            }
+
+            log('检查完成');
+        }
+
+        // 页面加载时自动检查
+        window.addEventListener('load', checkAll);
+    </script>
+</body>
+</html>

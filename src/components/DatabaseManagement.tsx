@@ -1,399 +1,509 @@
 import React, { useState, useEffect } from 'react'
-import { 
-  Modal, 
-  Button, 
-  Space, 
-  Typography, 
-  Card, 
-  Statistic, 
-  Upload, 
-  message, 
-  Divider,
-  Alert,
-  Row,
-  Col,
-  Tooltip,
-  Progress
-} from 'antd'
-import { 
-  DatabaseOutlined, 
-  UploadOutlined, 
-  ExportOutlined,
-  ImportOutlined,
-  DeleteOutlined,
-  SaveOutlined,
-  HddOutlined,
-  CloudDownloadOutlined,
-  ReloadOutlined
-} from '@ant-design/icons'
+import { databaseAdapter, type StorageMode } from '../services/databaseAdapter'
 import { sqliteService } from '../services/sqliteService'
-import { DataMigrationService } from '../services/dataMigration'
-import { LocalStorageService } from '../services/localStorage'
 
-const { Text, Paragraph } = Typography
-const { Dragger } = Upload
+interface StorageStats {
+  mode: StorageMode
+  size: number
+  lastBackup?: string
+  lastImport?: string
+  hasBackup: boolean
+}
 
-interface DatabaseManagementProps {
-  visible: boolean
-  onCancel: () => void
-  dbStatus: {
-    isInitialized: boolean
-    usingLocalStorage: boolean
-    errorMessage?: string
+export const DatabaseManagement: React.FC = () => {
+  const [stats, setStats] = useState<StorageStats | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
+  // 加载存储统计
+  const loadStats = async () => {
+    try {
+      const storageStats = await databaseAdapter.getStorageStats()
+      setStats(storageStats)
+    } catch (error) {
+      console.error('加载存储统计失败:', error)
+    }
   }
-  onDatabaseExport: () => void
-  onCreatePortablePackage: () => void
-  onRefresh: () => void
-}
 
-interface HealthStatus {
-  isInitialized: boolean
-  dbSize: number
-  tableCount: number
-  lastSave: string | null
-  version: number
-}
+  // 显示消息
+  const showMessage = (type: 'success' | 'error' | 'info', text: string) => {
+    setMessage({ type, text })
+    setTimeout(() => setMessage(null), 5000)
+  }
 
-interface StorageInfo {
-  used: number
-  available: number
-}
+  // 导出数据库
+  const handleExport = async () => {
+    setLoading(true)
+    try {
+      await databaseAdapter.exportToFile()
+      showMessage('success', '数据库导出成功！文件已下载到您的下载文件夹')
+      await loadStats()
+    } catch (error) {
+      showMessage('error', `导出失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-const DatabaseManagement: React.FC<DatabaseManagementProps> = ({
-  visible,
-  onCancel,
-  dbStatus,
-  onDatabaseExport,
-  onCreatePortablePackage,
-  onRefresh
-}) => {
-  const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null)
-  const [storageInfo, setStorageInfo] = useState<StorageInfo>({ used: 0, available: 0 })
-  const [migrationLoading, setMigrationLoading] = useState(false)
-  const [storageLoading, setStorageLoading] = useState(false)
+  // 导入数据库
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.endsWith('.db')) {
+      showMessage('error', '请选择 .db 格式的数据库文件')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await databaseAdapter.importFromFile(file)
+      showMessage('success', '数据库导入成功！页面将刷新以加载新数据')
+
+      // 刷新页面以重新加载数据
+      setTimeout(() => {
+        window.location.reload()
+      }, 2000)
+    } catch (error) {
+      showMessage('error', `导入失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 手动备份
+  const handleBackup = async () => {
+    setLoading(true)
+    try {
+      await databaseAdapter.autoBackup()
+      showMessage('success', '手动备份完成')
+      await loadStats()
+    } catch (error) {
+      showMessage('error', `备份失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 清理localStorage
+  const handleCleanup = async () => {
+    if (!confirm('确定要清理localStorage备份数据吗？这将删除所有备份文件（不影响当前数据）')) {
+      return
+    }
+
+    setLoading(true)
+    try {
+      await databaseAdapter.cleanupLocalStorage()
+      showMessage('success', 'localStorage清理完成')
+      await loadStats()
+    } catch (error) {
+      showMessage('error', `清理失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 获取存储建议
+  const getStorageRecommendation = () => {
+    if (!stats) return null
+
+    if (stats.size > 5) {
+      return {
+        type: 'warning' as const,
+        text: `数据库较大 (${stats.size.toFixed(2)} MB)，建议定期导出备份文件`
+        }
+      }
+
+    if (stats.size > 2) {
+      return {
+        type: 'info' as const,
+        text: `数据库正常 (${stats.size.toFixed(2)} MB)，建议启用自动备份`
+      }
+    }
+
+    return {
+      type: 'success' as const,
+      text: `数据库轻量 (${stats.size.toFixed(2)} MB)，当前存储方式适合`
+    }
+  }
 
   useEffect(() => {
-    if (visible) {
-      loadHealthStatus()
-      loadStorageInfo()
-    }
-  }, [visible])
+    loadStats()
+  }, [])
 
-  const loadHealthStatus = async () => {
-    try {
-      const result = await sqliteService.healthCheck()
-      if (result.success && result.data) {
-        setHealthStatus(result.data)
-      }
-    } catch (error) {
-      console.error('获取健康状态失败:', error)
-    }
-  }
-
-  const loadStorageInfo = async () => {
-    try {
-      setStorageLoading(true)
-      // 使用setTimeout避免阻塞UI线程
-      setTimeout(() => {
-        try {
-          const info = LocalStorageService.getStorageInfo()
-          setStorageInfo(info)
-        } catch (error) {
-          console.error('获取存储信息失败:', error)
-          // 设置默认值避免显示错误
-          setStorageInfo({ used: 0, available: 0 })
-        } finally {
-          setStorageLoading(false)
-        }
-      }, 100) // 稍微延迟一下，让加载状态显示
-    } catch (error) {
-      console.error('获取存储信息失败:', error)
-      setStorageInfo({ used: 0, available: 0 })
-      setStorageLoading(false)
-    }
-  }
-
-  const handleManualMigration = async () => {
-    try {
-      setMigrationLoading(true)
-      message.loading('正在迁移数据...', 0)
-
-      const result = await DataMigrationService.migrateFromLocalStorage()
-      
-      message.destroy()
-      
-      if (result.success) {
-        message.success(result.message)
-        onRefresh()
-        loadHealthStatus()
-      } else {
-        message.error(result.message)
-      }
-    } catch (error) {
-      message.destroy()
-      message.error('迁移过程中发生错误')
-      console.error('手动迁移失败:', error)
-    } finally {
-      setMigrationLoading(false)
-    }
-  }
-
-  const handleImportPortablePackage = async (file: File) => {
-    try {
-      message.loading('正在导入便携包...', 0)
-
-      const text = await file.text()
-      const result = await DataMigrationService.importPortablePackage(text)
-      
-      message.destroy()
-      
-      if (result.success) {
-        message.success(result.message)
-        onRefresh()
-        loadHealthStatus()
-      } else {
-        message.error(result.message)
-      }
-    } catch (error) {
-      message.destroy()
-      message.error('导入便携包失败')
-      console.error('导入便携包失败:', error)
-    }
-    
-    return false // 阻止默认上传行为
-  }
-
-  const handleClearLocalStorage = () => {
-    Modal.confirm({
-      title: '确认清除本地数据',
-      content: '此操作将清除所有localStorage中的数据，确保已做好备份。是否继续？',
-      onOk: () => {
-        try {
-          LocalStorageService.clearAllData()
-          message.success('本地数据已清除')
-          loadStorageInfo()
-        } catch (error) {
-          message.error('清除数据失败')
-          console.error('清除本地数据失败:', error)
-        }
-      }
-    })
-  }
-
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
-
-  const getStorageUsagePercentage = () => {
-    if (storageInfo.available === 0) return 0
-    return Math.round((storageInfo.used / (storageInfo.used + storageInfo.available)) * 100)
-  }
+  const recommendation = getStorageRecommendation()
 
   return (
-    <Modal
-      title={
-        <Space>
-          <DatabaseOutlined />
-          数据库管理
-        </Space>
-      }
-      open={visible}
-      onCancel={onCancel}
-      width={800}
-      footer={[
-        <Button key="refresh" icon={<ReloadOutlined />} onClick={() => {
-          loadHealthStatus()
-          loadStorageInfo()
-          onRefresh()
-        }}>
-          刷新状态
-        </Button>,
-        <Button key="close" onClick={onCancel}>
-          关闭
-        </Button>
-      ]}
-    >
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        
-        {/* 数据库状态概览 */}
-        <Card title="数据库状态" size="small">
-          <Row gutter={16}>
-            <Col span={6}>
-              <Statistic
-                title="存储模式"
-                value={dbStatus.isInitialized ? 'SQLite' : 'localStorage'}
-                prefix={<DatabaseOutlined style={{ color: dbStatus.isInitialized ? '#52c41a' : '#faad14' }} />}
-              />
-            </Col>
-            <Col span={6}>
-              <Statistic
-                title="数据库大小"
-                value={formatBytes(healthStatus?.dbSize || 0)}
-                prefix={<HddOutlined />}
-              />
-            </Col>
-            <Col span={6}>
-              <Statistic
-                title="表数量"
-                value={healthStatus?.tableCount || 0}
-                prefix={<DatabaseOutlined />}
-              />
-            </Col>
-            <Col span={6}>
-              <Statistic
-                title="版本"
-                value={"v" + (healthStatus?.version || 1)}
-              />
-            </Col>
-          </Row>
+    <div className="database-management">
+      <div className="management-header">
+        <h3>数据库管理</h3>
+        <button
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="toggle-advanced"
+        >
+          {showAdvanced ? '隐藏高级选项' : '显示高级选项'}
+        </button>
+      </div>
 
-          {healthStatus?.lastSave && (
-            <div style={{ marginTop: 16 }}>
-              <Text type="secondary">
-                最后保存时间: {new Date(healthStatus.lastSave).toLocaleString()}
-              </Text>
+      {/* 消息提示 */}
+      {message && (
+        <div className={`message message-${message.type}`}>
+          {message.text}
+        </div>
+      )}
+
+      {/* 存储统计 */}
+      {stats && (
+        <div className="storage-stats">
+          <div className="stat-item">
+            <label>存储方式:</label>
+            <span className="storage-mode">{stats.mode}</span>
+          </div>
+          <div className="stat-item">
+            <label>数据库大小:</label>
+            <span className="storage-size">{stats.size.toFixed(2)} MB</span>
+          </div>
+          {stats.lastBackup && (
+            <div className="stat-item">
+              <label>上次备份:</label>
+              <span>{new Date(stats.lastBackup).toLocaleString()}</span>
             </div>
           )}
-
-          {dbStatus.errorMessage && (
-            <Alert
-              message="数据库初始化失败"
-              description={dbStatus.errorMessage}
-              type="warning"
-              showIcon
-              style={{ marginTop: 16 }}
-            />
+          {stats.hasBackup && (
+            <div className="stat-item">
+              <label>本地备份:</label>
+              <span className="has-backup">✅ 有备份</span>
+            </div>
           )}
-        </Card>
+        </div>
+      )}
 
-        {/* 存储空间使用 */}
-        <Card 
-          title="本地存储使用情况" 
-          size="small"
-          loading={storageLoading}
+      {/* 存储建议 */}
+      {recommendation && (
+        <div className={`recommendation recommendation-${recommendation.type}`}>
+          <strong>建议:</strong> {recommendation.text}
+        </div>
+          )}
+
+      {/* 基本操作 */}
+      <div className="basic-operations">
+        <button
+          onClick={handleExport}
+          disabled={loading}
+          className="export-btn"
         >
-          <Row gutter={16}>
-            <Col span={12}>
-              <Statistic
-                title="已使用空间"
-                value={formatBytes(storageInfo.used)}
-                prefix={<SaveOutlined />}
-              />
-            </Col>
-            <Col span={12}>
-              <Statistic
-                title="可用空间"
-                value={formatBytes(storageInfo.available)}
-                prefix={<HddOutlined />}
-              />
-            </Col>
-          </Row>
-          <div style={{ marginTop: 16 }}>
-            <Text>存储使用率</Text>
-            <Progress 
-              percent={getStorageUsagePercentage()} 
-              status={getStorageUsagePercentage() > 80 ? 'exception' : 'normal'}
-              style={{ marginBottom: 8 }}
-            />
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              {getStorageUsagePercentage()}% 已使用
-            </Text>
-          </div>
-        </Card>
+          {loading ? '导出中...' : '📁 导出数据库文件'}
+        </button>
 
-        <Divider />
-
-        {/* 数据迁移 */}
-        <Card title="数据迁移" size="small">
-          <Paragraph type="secondary">
-            可以在不同存储模式之间迁移数据，或导入/导出便携包用于跨设备部署。
-          </Paragraph>
-          
-          <Space wrap>
-            <Tooltip title="将localStorage数据迁移到SQLite数据库">
-              <Button
-                icon={<ImportOutlined />}
-                loading={migrationLoading}
-                onClick={handleManualMigration}
-                disabled={dbStatus.isInitialized}
-              >
-                迁移到SQLite
-              </Button>
-            </Tooltip>
-
-            <Tooltip title="导出当前数据库为JSON格式">
-              <Button
-                icon={<ExportOutlined />}
-                onClick={onDatabaseExport}
-              >
-                导出数据库
-              </Button>
-            </Tooltip>
-
-            <Tooltip title="创建便携包，可复制到U盘使用">
-              <Button
-                icon={<CloudDownloadOutlined />}
-                onClick={onCreatePortablePackage}
-                type="primary"
-              >
-                创建便携包
-              </Button>
-            </Tooltip>
-          </Space>
-        </Card>
-
-        {/* 便携包导入 */}
-        <Card title="便携包导入" size="small">
-          <Paragraph type="secondary">
-            选择便携包文件(.json)导入数据，适用于从其他设备迁移数据。
-          </Paragraph>
-          
-          <Dragger
-            name="portablePackage"
-            accept=".json"
-            beforeUpload={handleImportPortablePackage}
-            showUploadList={false}
-            style={{ padding: '20px' }}
-          >
-            <p className="ant-upload-drag-icon">
-              <UploadOutlined style={{ fontSize: 48, color: '#1890ff' }} />
-            </p>
-            <p className="ant-upload-text">点击或拖拽便携包文件到此区域</p>
-            <p className="ant-upload-hint">
-              支持 .json 格式的便携包文件
-            </p>
-          </Dragger>
-        </Card>
-
-        <Divider />
-
-        {/* 危险操作 */}
-        <Card title="危险操作" size="small">
-          <Alert
-            message="危险操作"
-            description="以下操作可能导致数据丢失，请谨慎操作并确保已做好备份。"
-            type="error"
-            showIcon
-            style={{ marginBottom: 16 }}
+        <label className="import-btn">
+          📂 导入数据库文件
+          <input
+            type="file"
+            accept=".db"
+            onChange={handleImport}
+            disabled={loading}
+            style={{ display: 'none' }}
           />
-          
-          <Space>
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-              onClick={handleClearLocalStorage}
-            >
-              清除本地存储
-            </Button>
-          </Space>
-        </Card>
+        </label>
 
-      </Space>
-    </Modal>
+        <button
+          onClick={handleBackup}
+          disabled={loading}
+          className="backup-btn"
+        >
+          {loading ? '备份中...' : '💾 手动备份'}
+        </button>
+      </div>
+
+      {/* 高级选项 */}
+      {showAdvanced && (
+        <div className="advanced-options">
+          <h4>高级选项</h4>
+
+          <div className="advanced-actions">
+            <button
+              onClick={handleCleanup}
+              disabled={loading}
+              className="cleanup-btn"
+            >
+              🧹 清理localStorage
+            </button>
+
+            <button
+              onClick={loadStats}
+              disabled={loading}
+              className="refresh-btn"
+            >
+              🔄 刷新统计
+            </button>
+          </div>
+
+          <div className="storage-info">
+            <h5>存储方式说明:</h5>
+            <ul>
+              <li><strong>localStorage:</strong> 数据存储在浏览器中，访问快速但有大小限制</li>
+              <li><strong>file:</strong> 数据存储在独立文件中，容量大但需要手动管理</li>
+              <li><strong>hybrid:</strong> 结合两种方式的优点</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        .database-management {
+          background: white;
+          border-radius: 8px;
+          padding: 20px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          margin-bottom: 20px;
+        }
+
+        .management-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+        }
+
+        .management-header h3 {
+          margin: 0;
+          color: #333;
+        }
+
+        .toggle-advanced {
+          background: #f0f0f0;
+          border: none;
+          padding: 6px 12px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+        }
+
+        .toggle-advanced:hover {
+          background: #e0e0e0;
+        }
+
+        .message {
+          padding: 10px;
+          border-radius: 4px;
+          margin-bottom: 15px;
+          font-size: 14px;
+        }
+
+        .message-success {
+          background: #d4edda;
+          color: #155724;
+          border: 1px solid #c3e6cb;
+        }
+
+        .message-error {
+          background: #f8d7da;
+          color: #721c24;
+          border: 1px solid #f5c6cb;
+        }
+
+        .message-info {
+          background: #d1ecf1;
+          color: #0c5460;
+          border: 1px solid #bee5eb;
+        }
+
+        .storage-stats {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 15px;
+          margin-bottom: 20px;
+          padding: 15px;
+          background: #f8f9fa;
+          border-radius: 6px;
+        }
+
+        .stat-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .stat-item label {
+          font-weight: 500;
+          color: #666;
+        }
+
+        .storage-mode {
+          background: #007bff;
+          color: white;
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+        }
+
+        .storage-size {
+          font-weight: bold;
+          color: #333;
+        }
+
+        .has-backup {
+          color: #28a745;
+          font-weight: bold;
+        }
+
+        .recommendation {
+          padding: 12px;
+          border-radius: 4px;
+          margin-bottom: 20px;
+          font-size: 14px;
+        }
+
+        .recommendation-success {
+          background: #d4edda;
+          color: #155724;
+          border: 1px solid #c3e6cb;
+        }
+
+        .recommendation-warning {
+          background: #fff3cd;
+          color: #856404;
+          border: 1px solid #ffeaa7;
+        }
+
+        .recommendation-info {
+          background: #d1ecf1;
+          color: #0c5460;
+          border: 1px solid #bee5eb;
+        }
+
+        .basic-operations {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-bottom: 20px;
+        }
+
+        .basic-operations button,
+        .basic-operations label {
+          padding: 10px 16px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: all 0.2s;
+        }
+
+        .export-btn {
+          background: #007bff;
+          color: white;
+        }
+
+        .export-btn:hover:not(:disabled) {
+          background: #0056b3;
+        }
+
+        .import-btn {
+          background: #28a745;
+          color: white;
+          display: inline-block;
+        }
+
+        .import-btn:hover {
+          background: #1e7e34;
+        }
+
+        .backup-btn {
+          background: #ffc107;
+          color: #212529;
+        }
+
+        .backup-btn:hover:not(:disabled) {
+          background: #e0a800;
+        }
+
+        .advanced-options {
+          border-top: 1px solid #dee2e6;
+          padding-top: 20px;
+        }
+
+        .advanced-options h4 {
+          margin: 0 0 15px 0;
+          color: #333;
+        }
+
+        .advanced-actions {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 20px;
+        }
+
+        .cleanup-btn {
+          background: #dc3545;
+          color: white;
+          padding: 8px 12px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+        }
+
+        .cleanup-btn:hover:not(:disabled) {
+          background: #c82333;
+        }
+
+        .refresh-btn {
+          background: #6c757d;
+          color: white;
+          padding: 8px 12px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+        }
+
+        .refresh-btn:hover:not(:disabled) {
+          background: #5a6268;
+        }
+
+        .storage-info {
+          background: #f8f9fa;
+          padding: 15px;
+          border-radius: 6px;
+        }
+
+        .storage-info h5 {
+          margin: 0 0 10px 0;
+          color: #333;
+        }
+
+        .storage-info ul {
+          margin: 0;
+          padding-left: 20px;
+        }
+
+        .storage-info li {
+          margin-bottom: 5px;
+          font-size: 13px;
+          color: #666;
+        }
+
+        button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+          .storage-stats {
+            grid-template-columns: 1fr;
+          }
+
+          .basic-operations {
+            flex-direction: column;
+          }
+
+          .advanced-actions {
+            flex-direction: column;
+          }
+        }
+      `}</style>
+    </div>
   )
 }
 

@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react'
-import { Layout, Typography, Space, Button, message, Spin, Alert, notification } from 'antd'
-import { UploadOutlined, DownloadOutlined, SettingOutlined, DatabaseOutlined } from '@ant-design/icons'
+import { DatabaseOutlined, DownloadOutlined, SettingOutlined, UploadOutlined } from '@ant-design/icons'
+import { Alert, Button, Layout, message, notification, Space, Spin, Typography } from 'antd'
+import React, { useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
-import MasterGanttView from './components/MasterGanttView'
-import ImportModal from './components/ImportModal'
 import DatabaseManagement from './components/DatabaseManagement'
-import type { Task } from './types'
+import ImportModal from './components/ImportModal'
+import MasterGanttView from './components/MasterGanttView'
+import { DataMigrationService, initAutoMigration } from './services/dataMigration'
 import { LocalStorageService } from './services/localStorage'
 import { sqliteService } from './services/sqliteService'
-import { initAutoMigration, DataMigrationService } from './services/dataMigration'
+import type { Task } from './types'
 
 const { Header, Content } = Layout
 const { Title, Text } = Typography
@@ -34,8 +34,8 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ 
-          padding: '20px', 
+        <div style={{
+          padding: '20px',
           textAlign: 'center',
           backgroundColor: '#f5f5f5',
           minHeight: '100vh',
@@ -50,8 +50,8 @@ class ErrorBoundary extends React.Component<
             showIcon
             style={{ marginBottom: '20px' }}
           />
-          <Button 
-            type="primary" 
+          <Button
+            type="primary"
             onClick={() => window.location.reload()}
           >
             重新加载页面
@@ -92,9 +92,9 @@ function App() {
     try {
       setLoading(true)
       setInitError(null)
-      
+
       console.log('🚀 开始初始化应用...')
-      
+
       // 请求通知权限
       if ('Notification' in window && Notification.permission === 'default') {
         await Notification.requestPermission()
@@ -108,7 +108,7 @@ function App() {
       // 检查数据库状态
       console.log('🔍 检查数据库状态...')
       const healthCheck = await sqliteService.healthCheck()
-      
+
       if (healthCheck.success && healthCheck.data?.isInitialized) {
         // SQLite模式
         console.log('✅ SQLite模式启动')
@@ -116,9 +116,9 @@ function App() {
           isInitialized: true,
           usingLocalStorage: false
         })
-        
+
         await loadTasksFromSQLite()
-        
+
         // 显示SQLite模式通知
         notification.success({
           message: '数据库已就绪',
@@ -133,9 +133,9 @@ function App() {
           usingLocalStorage: true,
           errorMessage: healthCheck.error
         })
-        
+
         loadTasksFromLocalStorage()
-        
+
         // 显示降级通知
         notification.warning({
           message: '使用本地存储模式',
@@ -146,16 +146,16 @@ function App() {
 
     } catch (error) {
       console.error('应用初始化失败:', error)
-      
+
       const errorMessage = error instanceof Error ? error.message : String(error)
       setInitError(errorMessage)
-      
+
       setDbStatus({
         isInitialized: false,
         usingLocalStorage: true,
         errorMessage: errorMessage
       })
-      
+
       // 降级到localStorage
       try {
         loadTasksFromLocalStorage()
@@ -163,7 +163,7 @@ function App() {
         console.error('localStorage加载也失败:', localError)
         setTasks([])
       }
-      
+
       message.error('应用初始化失败，已降级到本地存储模式')
     } finally {
       setLoading(false)
@@ -174,14 +174,14 @@ function App() {
   const loadTasksFromSQLite = async (page: number = 1) => {
     try {
       const result = await sqliteService.getTasksPaginated(page, pageSize)
-      
+
       if (result.success && result.data) {
         if (page === 1) {
           setTasks(result.data.data)
         } else {
           setTasks(prev => [...prev, ...result.data!.data])
         }
-        
+
         setTotalTasks(result.data.total)
         setHasMore(result.data.hasMore)
       } else {
@@ -222,21 +222,21 @@ function App() {
   const handleImport = async (importedTasks: Task[]) => {
     try {
       console.log(`🔄 开始导入 ${importedTasks.length} 个任务...`)
-      
+
       if (dbStatus.isInitialized) {
         // SQLite模式
         console.log('📊 使用SQLite模式导入')
         const result = await sqliteService.saveTasksBatch(importedTasks)
-        
+
         if (result.success) {
           console.log('✅ SQLite批量保存完成，重新加载数据')
-          
+
           // 确保数据已保存完成后再重新加载
           await new Promise(resolve => setTimeout(resolve, 100)) // 短暂延迟确保数据已保存
-          
+
           await loadTasksFromSQLite(1)
           console.log('✅ 任务数据重新加载完成')
-          
+
           message.success(`成功导入 ${importedTasks.length} 个任务`)
         } else {
           throw new Error(result.error)
@@ -280,7 +280,7 @@ function App() {
         '委托方': task.clientName,
         '委托时间': task.commitTime,
         '优先级': task.priority,
-        '状态': task.status === 'pending' ? '待处理' : 
+        '状态': task.status === 'pending' ? '待处理' :
                 task.status === 'inProgress' ? '进行中' : '已完成'
       }))
 
@@ -290,7 +290,7 @@ function App() {
 
       const fileName = `生产看板数据_${new Date().toISOString().split('T')[0]}.xlsx`
       XLSX.writeFile(workbook, fileName)
-      
+
       message.success(`数据导出成功 (共${exportTasks.length}条记录)`)
     } catch (error) {
       console.error('导出失败:', error)
@@ -313,7 +313,7 @@ function App() {
           link.click()
           document.body.removeChild(link)
           URL.revokeObjectURL(url)
-          
+
           message.success('数据库备份导出成功')
         } else {
           throw new Error(result.error)
@@ -330,7 +330,7 @@ function App() {
         link.click()
         document.body.removeChild(link)
         URL.revokeObjectURL(url)
-        
+
         message.success('本地数据备份导出成功')
       }
     } catch (error) {
@@ -343,7 +343,7 @@ function App() {
   const handleCreatePortablePackage = async () => {
     try {
       const result = await DataMigrationService.createPortablePackage()
-      
+
       if (result.success && result.data) {
         const blob = new Blob([result.data], { type: 'application/json' })
         const url = URL.createObjectURL(blob)
@@ -354,7 +354,7 @@ function App() {
         link.click()
         document.body.removeChild(link)
         URL.revokeObjectURL(url)
-        
+
         message.success('便携包创建成功！可直接复制到U盘使用')
       } else {
         throw new Error(result.error)
@@ -368,10 +368,10 @@ function App() {
   if (loading) {
     return (
       <Layout className="kanban-container">
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
           height: '100vh',
           flexDirection: 'column'
         }}>
@@ -402,33 +402,33 @@ function App() {
     <ErrorBoundary>
       <Layout className="kanban-container">
         <Header className="kanban-header">
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
             height: '100%',
             padding: '0 24px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <Title level={2} style={{ 
-                margin: 0, 
+              <Title level={2} style={{
+                margin: 0,
                 color: '#1890ff',
                 lineHeight: '64px',
                 marginRight: 16
               }}>
                 喷漆二工段任务分配可视化系统
               </Title>
-              
+
               {/* 数据库状态指示器 */}
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                <DatabaseOutlined 
-                  style={{ 
+                <DatabaseOutlined
+                  style={{
                     color: dbStatus.isInitialized ? '#52c41a' : '#faad14',
                     marginRight: 4
-                  }} 
+                  }}
                 />
-                <Text style={{ 
-                  fontSize: 12, 
+                <Text style={{
+                  fontSize: 12,
                   color: dbStatus.isInitialized ? '#52c41a' : '#faad14'
                 }}>
                   {dbStatus.isInitialized ? 'SQLite' : 'localStorage'}
@@ -440,28 +440,28 @@ function App() {
                 )}
               </div>
             </div>
-            
+
             <Space size="large">
-              <Button 
-                type="primary" 
+              <Button
+                type="primary"
                 icon={<UploadOutlined />}
                 onClick={() => setImportModalVisible(true)}
               >
                 导入任务
               </Button>
-              <Button 
+              <Button
                 icon={<DownloadOutlined />}
                 onClick={handleExport}
               >
                 导出Excel
               </Button>
-              <Button 
+              <Button
                 icon={<DatabaseOutlined />}
                 onClick={() => setDbManagementVisible(true)}
               >
                 数据管理
               </Button>
-              <Button 
+              <Button
                 icon={<SettingOutlined />}
                 onClick={handleCreatePortablePackage}
               >
@@ -470,7 +470,7 @@ function App() {
             </Space>
           </div>
         </Header>
-        
+
         {/* 状态提示 */}
         {dbStatus.usingLocalStorage && dbStatus.errorMessage && (
           <Alert
@@ -481,28 +481,61 @@ function App() {
             style={{ margin: '16px 24px 0' }}
           />
         )}
-        
+
         <Content className="kanban-content">
-          <MasterGanttView 
-            tasks={tasks} 
+          <MasterGanttView
+            tasks={tasks}
             onTasksChange={handleTasksChange}
           />
         </Content>
-        
+
         <ImportModal
           visible={importModalVisible}
           onCancel={() => setImportModalVisible(false)}
           onImport={handleImport}
         />
-        
-        <DatabaseManagement
-          visible={dbManagementVisible}
-          onCancel={() => setDbManagementVisible(false)}
-          dbStatus={dbStatus}
-          onDatabaseExport={handleDatabaseExport}
-          onCreatePortablePackage={handleCreatePortablePackage}
-          onRefresh={() => initializeApp()}
-        />
+
+        {dbManagementVisible && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              maxWidth: '800px',
+              width: '90%',
+              maxHeight: '90%',
+              overflow: 'auto',
+              position: 'relative'
+            }}>
+              <button
+                onClick={() => setDbManagementVisible(false)}
+                style={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  zIndex: 1001
+                }}
+              >
+                ×
+              </button>
+              <DatabaseManagement />
+            </div>
+          </div>
+        )}
       </Layout>
     </ErrorBoundary>
   )
