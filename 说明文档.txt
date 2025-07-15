@@ -1,0 +1,193 @@
+# 生产看板系统 - 便携部署说明
+
+## 🎯 系统特点
+- ✅ 完全离线运行，无需网络连接
+- ✅ 使用SQLite本地数据库，数据安全可靠
+- ✅ 支持U盘便携部署，即插即用
+- ✅ 数据文件独立存储，便于备份和迁移
+- ✅ 跨平台支持（Windows/Linux/macOS）
+
+## 📦 部署方式
+
+### 方式一：U盘便携部署（推荐）
+
+1. **准备U盘**
+   - U盘容量：至少500MB
+   - 格式化为NTFS或exFAT格式
+
+2. **复制文件**
+   ```
+   U盘:/生产看板系统/
+   ├── 应用文件/ (所有项目文件)
+   ├── database/ (数据库目录，自动创建)
+   ├── 启动.bat (Windows启动)
+   ├── 启动.sh (Linux/Mac启动)
+   └── 说明文档.txt (本文件)
+   ```
+
+3. **在目标电脑使用**
+   - Windows: 双击"启动.bat"
+   - Linux/Mac: 运行"./启动.sh"
+   - 系统会自动在浏览器中打开
+
+### 方式二：内网服务器部署
+
+1. **复制到服务器**
+   ```bash
+   # 复制整个目录到服务器
+   scp -r 生产看板系统/ user@server:/opt/
+   ```
+
+2. **启动服务**
+   ```bash
+   cd /opt/生产看板系统/
+   chmod +x 启动.sh
+   ./启动.sh
+   ```
+
+3. **访问系统**
+   - 本机访问: http://localhost:3000
+   - 局域网访问: http://服务器IP:3000
+
+## 🗄️ 数据库管理
+
+### SQLite数据库位置
+```
+./database/production.db
+```
+
+### 数据备份
+1. **手动备份**
+   - 复制`database/production.db`文件
+   - 建议定期备份到其他位置
+
+2. **系统内备份**
+   - 在系统中点击"导出数据"
+   - 生成JSON格式的完整备份
+
+3. **自动备份脚本**
+   ```bash
+   # 每日自动备份 (Linux/Mac)
+   cp database/production.db backup/production_$(date +%Y%m%d).db
+   ```
+
+### 数据恢复
+1. **从数据库文件恢复**
+   - 停止系统
+   - 替换`database/production.db`文件
+   - 重启系统
+
+2. **从JSON备份恢复**
+   - 在系统中使用"导入数据"功能
+   - 选择之前导出的JSON文件
+
+## 🔧 系统配置
+
+### 环境要求
+- **Node.js**: 版本16.0或以上
+- **内存**: 最低512MB，推荐1GB
+- **硬盘**: 最低100MB可用空间
+- **浏览器**: Chrome/Firefox/Edge（现代浏览器）
+
+### 网络要求
+- **完全离线运行**，无需网络连接
+- 局域网部署时需要网络连接
+
+### 性能参考
+- **小型使用** (< 1000任务): 任何现代电脑
+- **中型使用** (1000-10000任务): 推荐4GB内存
+- **大型使用** (> 10000任务): 推荐8GB内存，SSD硬盘
+
+## 🚀 使用流程
+
+### 首次使用
+1. 运行启动脚本
+2. 系统自动创建数据库
+3. 导入师傅名单（已预置17名师傅）
+4. 开始导入任务数据
+
+### 日常使用
+1. 启动系统
+2. 导入Excel/CSV任务文件
+3. 分配任务给师傅
+4. 跟踪任务进度
+5. 导出数据备份
+
+### 迁移到新电脑
+1. **完整迁移**
+   - 复制整个"生产看板系统"文件夹
+   - 在新电脑运行启动脚本
+
+2. **仅数据迁移**
+   - 复制`database/production.db`文件
+   - 或使用系统的导出/导入功能
+
+## 🔍 故障排除
+
+### 常见问题
+
+1. **启动失败**
+   ```
+   原因: 缺少Node.js环境
+   解决: 安装Node.js https://nodejs.org/
+   ```
+
+2. **数据库错误**
+   ```
+   原因: 数据库文件损坏
+   解决: 从备份恢复production.db文件
+   ```
+
+3. **端口占用**
+   ```
+   原因: 3000端口被其他程序占用
+   解决: 关闭占用端口的程序或修改配置文件
+   ```
+
+4. **权限错误**
+   ```
+   原因: 没有写入权限
+   解决: 以管理员身份运行或修改文件夹权限
+   ```
+
+### 技术支持
+
+- **日志文件**: `logs/application.log`
+- **数据库工具**: 可使用SQLite Browser查看数据
+- **配置文件**: `config/settings.json`
+
+## 📋 数据表结构
+
+### 主要数据表
+- `tasks`: 任务信息
+- `masters`: 师傅信息  
+- `master_assignments`: 分配历史
+- `settings`: 系统设置
+
+### 数据字段说明
+```sql
+-- 任务表字段
+CREATE TABLE tasks (
+  id TEXT PRIMARY KEY,           -- 任务ID
+  product_name TEXT NOT NULL,    -- 产品名称
+  product_code TEXT,             -- 产品图号
+  work_hours REAL NOT NULL,      -- 预计工时
+  coefficient REAL DEFAULT 1.0,  -- 工时系数
+  master_name TEXT NOT NULL,     -- 负责师傅
+  batch_number TEXT NOT NULL,    -- 架次号
+  client_name TEXT NOT NULL,     -- 委托方
+  commit_time TEXT NOT NULL,     -- 委托时间
+  status TEXT DEFAULT 'pending', -- 状态
+  priority INTEGER DEFAULT 1,    -- 优先级
+  created_at TEXT,               -- 创建时间
+  updated_at TEXT                -- 更新时间
+);
+```
+
+## 📞 联系方式
+
+如遇技术问题，请联系系统管理员或查看系统日志文件。
+
+---
+**生产看板系统 v1.0.0**  
+*专为喷漆工段生产管理设计*

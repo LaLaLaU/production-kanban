@@ -10,7 +10,6 @@ export class MasterAssignmentService {
       (productCode ? a.productCode === productCode : !a.productCode)
     )
     
-    console.log('更新分配记录:', { productName, productCode, masterName, existingIndex })
     
     if (existingIndex >= 0) {
       assignments[existingIndex].masterName = masterName
@@ -19,7 +18,6 @@ export class MasterAssignmentService {
       if (productCode) {
         assignments[existingIndex].productCode = productCode
       }
-      console.log('更新现有记录:', assignments[existingIndex])
     } else {
       const newAssignment = {
         productName,
@@ -29,16 +27,13 @@ export class MasterAssignmentService {
         lastAssignedTime: new Date().toISOString()
       }
       assignments.push(newAssignment)
-      console.log('创建新记录:', newAssignment)
     }
     
     LocalStorageService.saveMasterAssignments(assignments)
-    console.log('保存分配记录完成，总数:', assignments.length)
   }
 
   static getRecommendedMaster(productName: string, productCode?: string): string | null {
     const assignments = LocalStorageService.loadMasterAssignments()
-    console.log('智能分配查询:', { productName, productCode, assignments })
     
     // 只有在产品图号和产品名称都完全匹配时才自动分配
     if (productCode && productName) {
@@ -47,7 +42,6 @@ export class MasterAssignmentService {
         a.productName === productName
       )
       if (exactMatch) {
-        console.log('精确匹配成功:', exactMatch)
         return exactMatch.masterName
       }
     }
@@ -60,12 +54,10 @@ export class MasterAssignmentService {
         a.confidence > 0.8
       )
       if (nameMatch) {
-        console.log('产品名称精确匹配成功:', nameMatch)
         return nameMatch.masterName
       }
     }
     
-    console.log('未找到精确匹配的分配记录，设为待分配')
     return null
   }
 
@@ -195,8 +187,7 @@ export class MasterAssignmentService {
       const assignments = JSON.parse(jsonData) as MasterAssignment[]
       LocalStorageService.saveMasterAssignments(assignments)
       return true
-    } catch (error) {
-      console.error('导入师傅分配数据失败:', error)
+    } catch {
       return false
     }
   }

@@ -5,7 +5,6 @@ import {
   Input,
   Select,
   InputNumber,
-  DatePicker,
   Button,
   Space,
   message,
@@ -18,7 +17,6 @@ import { UserOutlined, ClockCircleOutlined, CalendarOutlined, AlertOutlined } fr
 import type { Task } from '../types'
 
 const { Option } = Select
-const { TextArea } = Input
 const { Text } = Typography
 
 interface TaskEditModalProps {
@@ -82,7 +80,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
       onSave(updatedTask)
       message.success('任务更新成功')
       onCancel()
-    } catch (error) {
+    } catch {
       message.error('请完善必填信息')
     } finally {
       setLoading(false)
@@ -99,12 +97,6 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
     { label: '进行中', value: 'inProgress' },
     { label: '已完成', value: 'completed' }
   ]
-
-  const getPriorityColor = (priority: number) => {
-    if (priority >= 8) return '#ff4d4f'
-    if (priority >= 5) return '#faad14'
-    return '#52c41a'
-  }
 
   return (
     <Modal
@@ -161,7 +153,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
             allowClear
             showSearch
             filterOption={(input, option) =>
-              (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+              (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
             }
           >
             <Option value="待分配">

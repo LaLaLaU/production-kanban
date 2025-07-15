@@ -71,7 +71,6 @@ const DroppableColumn: React.FC<DroppableColumnProps> = ({ column, coefficient, 
             <DraggableTaskCard
               key={task.id}
               task={task}
-              coefficient={coefficient}
               onEdit={onEditTask}
             />
           ))}

@@ -7,11 +7,10 @@ const { Text } = Typography
 
 interface TaskCardProps {
   task: Task
-  coefficient?: number // 全局系数（现在可选，因为任务有自己的系数）
   onEdit?: (task: Task) => void
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, coefficient, onEdit }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
   const taskCoefficient = task.coefficient || 1 // 使用任务自己的系数，默认为1
   const adjustedWorkHours = task.workHours * taskCoefficient
   const cardHeight = Math.max(80, Math.min(200, adjustedWorkHours * 0.8))

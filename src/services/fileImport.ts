@@ -4,7 +4,7 @@ import type { Task } from '../types'
 import type { ColumnMapping } from '../types/import'
 
 export class FileImportService {
-  static async parseExcelFile(file: File): Promise<any[]> {
+  static async parseExcelFile(file: File): Promise<unknown[][]> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = (e) => {
@@ -14,7 +14,7 @@ export class FileImportService {
           const sheetName = workbook.SheetNames[0]
           const worksheet = workbook.Sheets[sheetName]
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
-          resolve(jsonData as any[])
+          resolve(jsonData as unknown[][])
         } catch (error) {
           reject(error)
         }
@@ -24,11 +24,11 @@ export class FileImportService {
     })
   }
 
-  static async parseCSVFile(file: File): Promise<any[]> {
+  static async parseCSVFile(file: File): Promise<unknown[][]> {
     return new Promise((resolve, reject) => {
       Papa.parse(file, {
         complete: (results) => {
-          resolve(results.data as any[])
+          resolve(results.data as unknown[][])
         },
         error: (error) => {
           reject(error)
@@ -38,7 +38,7 @@ export class FileImportService {
     })
   }
 
-  static async parseFile(file: File): Promise<any[]> {
+  static async parseFile(file: File): Promise<unknown[][]> {
     const extension = file.name.split('.').pop()?.toLowerCase()
     
     switch (extension) {
@@ -52,24 +52,25 @@ export class FileImportService {
     }
   }
 
-  static extractHeaders(data: any[]): string[] {
+  static extractHeaders(data: unknown[][]): string[] {
     if (data.length === 0) return []
-    return data[0].filter((header: any) => header && header.toString().trim() !== '')
+    const firstRow = data[0] || []
+    return firstRow.filter((header: unknown) => header && header.toString().trim() !== '') as string[]
   }
 
   static mapDataToTasks(
-    data: any[],
+    data: unknown[][],
     mapping: ColumnMapping
   ): Task[] {
     if (data.length <= 1) return []
 
-    const headers = data[0]
+    const headers = data[0] as string[]
     const rows = data.slice(1)
 
     return rows
-      .filter(row => row && row.some((cell: any) => cell !== null && cell !== undefined && cell !== ''))
+      .filter(row => row && row.some((cell: unknown) => cell !== null && cell !== undefined && cell !== ''))
       .map((row, index) => {
-        const rowData: any = {}
+        const rowData: Record<string, unknown> = {}
         headers.forEach((header: string, headerIndex: number) => {
           if (header && mapping[header]) {
             rowData[mapping[header]] = row[headerIndex] || ''
@@ -78,15 +79,15 @@ export class FileImportService {
 
         return {
           id: `imported-${Date.now()}-${index}`,
-          productName: rowData.productName || '未知产品',
-          productCode: rowData.productCode || undefined, // 产品图号
-          workHours: parseFloat(rowData.workHours) || 60,
-          masterName: rowData.masterName || '待分配',
-          batchNumber: rowData.batchNumber || `BATCH-${Date.now()}`,
-          clientName: rowData.clientName || '未知委托方',
-          commitTime: rowData.commitTime || new Date().toISOString().split('T')[0],
+          productName: String(rowData.productName || '未知产品'),
+          productCode: rowData.productCode ? String(rowData.productCode) : undefined,
+          workHours: parseFloat(String(rowData.workHours)) || 60,
+          masterName: String(rowData.masterName || '待分配'),
+          batchNumber: String(rowData.batchNumber || `BATCH-${Date.now()}`),
+          clientName: String(rowData.clientName || '未知委托方'),
+          commitTime: String(rowData.commitTime || new Date().toISOString().split('T')[0]),
           status: 'pending' as const,
-          priority: parseInt(rowData.priority) || 1
+          priority: parseInt(String(rowData.priority)) || 1
         }
       })
   }

@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { Card, Typography, Row, Col, Space, Tooltip } from 'antd'
-import { ExclamationCircleFilled, ClockCircleOutlined } from '@ant-design/icons'
+import { ExclamationCircleFilled } from '@ant-design/icons'
 import TaskEditModal from './TaskEditModal'
 import type { Task } from '../types'
 
@@ -8,7 +8,6 @@ const { Title, Text } = Typography
 
 interface MasterGanttViewProps {
   tasks: Task[]
-  coefficient: number
   onTasksChange?: (tasks: Task[]) => void
 }
 
@@ -30,11 +29,10 @@ const getPriorityColor = (priority: number): string => {
 // 任务条组件
 const TaskBar: React.FC<{
   task: Task
-  coefficient?: number // 全局系数（可选）
   maxWidth: number
   onEdit?: (task: Task) => void
   barHeight?: number // 任务条高度
-}> = ({ task, coefficient, maxWidth, onEdit, barHeight = 16 }) => {
+}> = ({ task, maxWidth, onEdit, barHeight = 16 }) => {
   const taskCoefficient = task.coefficient || 1 // 使用任务自己的系数
   const adjustedWorkHours = task.workHours * taskCoefficient
   // 更精确的工时长度计算：每分钟对应1.5px，确保工时差异明显
@@ -129,10 +127,9 @@ const TaskBar: React.FC<{
 const MasterRow: React.FC<{
   masterName: string
   tasks: Task[]
-  coefficient: number
   onEditTask?: (task: Task) => void
   rowHeight: number
-}> = ({ masterName, tasks, coefficient, onEditTask, rowHeight }) => {
+}> = ({ masterName, tasks, onEditTask, rowHeight }) => {
   // 按委托时间排序任务
   const sortedTasks = useMemo(() => {
     return tasks
@@ -203,7 +200,6 @@ const MasterRow: React.FC<{
               <TaskBar
                 key={task.id}
                 task={task}
-                coefficient={coefficient}
                 maxWidth={400}
                 onEdit={onEditTask}
                 barHeight={Math.max(14, rowHeight - 8)} // 调整任务条高度，保留上下边距
@@ -216,7 +212,7 @@ const MasterRow: React.FC<{
   )
 }
 
-const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, coefficient, onTasksChange }) => {
+const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange }) => {
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [containerHeight, setContainerHeight] = useState(0)
@@ -373,7 +369,6 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, coefficient, o
                 key={master}
                 masterName={master}
                 tasks={tasks}
-                coefficient={coefficient}
                 onEditTask={handleEditTask}
                 rowHeight={rowHeight}
               />

@@ -5,12 +5,19 @@ import type { Task } from '../types'
 
 const { Title, Text } = Typography
 
-interface StatsPanelProps {
-  tasks: Task[]
-  coefficient: number
+interface MasterStats {
+  total: number
+  pending: number
+  inProgress: number
+  completed: number
+  totalHours: number
 }
 
-const StatsPanel: React.FC<StatsPanelProps> = ({ tasks, coefficient }) => {
+interface StatsPanelProps {
+  tasks: Task[]
+}
+
+const StatsPanel: React.FC<StatsPanelProps> = ({ tasks }) => {
   const stats = useMemo(() => {
     const totalTasks = tasks.length
     const pendingTasks = tasks.filter(t => t.status === 'pending').length
@@ -46,7 +53,7 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ tasks, coefficient }) => {
         acc[task.masterName].totalHours += task.workHours * (task.coefficient || 1)
       }
       return acc
-    }, {} as Record<string, any>)
+    }, {} as Record<string, MasterStats>)
 
     return {
       totalTasks,
@@ -59,7 +66,7 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ tasks, coefficient }) => {
       todayCompleted,
       masterStats
     }
-  }, [tasks, coefficient])
+  }, [tasks])
 
   return (
     <Card title="生产统计" style={{ marginBottom: 16 }}>
@@ -145,7 +152,7 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ tasks, coefficient }) => {
         </Col>
         <Col span={18}>
           <Title level={5}>师傅工作量分布</Title>
-          {Object.entries(stats.masterStats).map(([master, data]: [string, any]) => (
+          {Object.entries(stats.masterStats).map(([master, data]: [string, MasterStats]) => (
             <div key={master} style={{ marginBottom: 8 }}>
               <Row align="middle">
                 <Col span={6}>

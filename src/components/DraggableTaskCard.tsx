@@ -6,11 +6,10 @@ import type { Task } from '../types'
 
 interface DraggableTaskCardProps {
   task: Task
-  coefficient: number
   onEdit?: (task: Task) => void
 }
 
-const DraggableTaskCard: React.FC<DraggableTaskCardProps> = ({ task, coefficient, onEdit }) => {
+const DraggableTaskCard: React.FC<DraggableTaskCardProps> = ({ task, onEdit }) => {
   const {
     attributes,
     listeners,
@@ -33,7 +32,7 @@ const DraggableTaskCard: React.FC<DraggableTaskCardProps> = ({ task, coefficient
       {...attributes}
       {...listeners}
     >
-      <TaskCard task={task} coefficient={coefficient} onEdit={onEdit} />
+      <TaskCard task={task} onEdit={onEdit} />
     </div>
   )
 }

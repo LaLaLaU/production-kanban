@@ -39,7 +39,7 @@ interface ImportModalProps {
 
 const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onImport }) => {
   const [currentStep, setCurrentStep] = useState(0)
-  const [fileData, setFileData] = useState<any[]>([])
+  const [fileData, setFileData] = useState<unknown[][]>([])
   const [headers, setHeaders] = useState<string[]>([])
   const [columnMapping, setColumnMapping] = useState<ColumnMapping>({})
   const [previewTasks, setPreviewTasks] = useState<Task[]>([])
@@ -83,8 +83,8 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onImport }
       }
       return false
     },
-    onDrop(e) {
-      console.log('Dropped files', e.dataTransfer.files)
+    onDrop() {
+      // 处理文件拖放事件
     }
   }
 
@@ -166,7 +166,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onImport }
       title: '映射到字段',
       dataIndex: 'mapping',
       key: 'mapping',
-      render: (_: any, record: { header: string }) => (
+      render: (_: unknown, record: { header: string }) => (
         <Select
           style={{ width: '100%' }}
           placeholder="选择对应字段"
@@ -180,9 +180,9 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onImport }
       title: '示例数据',
       dataIndex: 'sample',
       key: 'sample',
-      render: (_: any, record: { header: string }) => {
+      render: (_: unknown, record: { header: string }) => {
         const headerIndex = headers.indexOf(record.header)
-        const sampleData = fileData[1] ? fileData[1][headerIndex] : ''
+        const sampleData = fileData[1] ? String(fileData[1][headerIndex] || '') : ''
         return <Text type="secondary">{sampleData || '无数据'}</Text>
       }
     }

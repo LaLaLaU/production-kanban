@@ -388,7 +388,7 @@ const KanbanBoard: React.FC<{
 
         <Collapse style={{ marginBottom: 16 }}>
           <Panel header="数据统计" key="stats" extra={<BarChartOutlined />}>
-            <StatsPanel tasks={tasks} coefficient={coefficient} />
+            <StatsPanel tasks={tasks} />
           </Panel>
         </Collapse>
 
@@ -405,7 +405,7 @@ const KanbanBoard: React.FC<{
 
         <DragOverlay>
           {activeTask ? (
-            <TaskCard task={activeTask} coefficient={coefficient} />
+            <TaskCard task={activeTask} />
           ) : null}
         </DragOverlay>
       </div>
