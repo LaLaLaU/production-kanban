@@ -18,11 +18,44 @@ const MASTERS = [
   '叶佩珺', '李雪', '昂洪涛', '刘庆', '王家龙', '叶建辉', '魏祯', '杨同'
 ]
 
-// 根据优先级获取颜色
-const getPriorityColor = (priority: number): string => {
-  if (priority >= 8) return '#ff4d4f' // 高优先级 - 红色
-  if (priority >= 5) return '#faad14' // 中优先级 - 橙色
-  return '#52c41a' // 低优先级 - 绿色
+// 根据委托时间获取颜色（与水位效果一致）
+const getTimeBasedColor = (commitTime: string): string => {
+  if (!commitTime) return 'rgba(200, 200, 200, 0.8)' // 默认灰色
+
+  try {
+    const commitDate = new Date(commitTime)
+    const now = new Date()
+
+    if (isNaN(commitDate.getTime())) {
+      return 'rgba(200, 200, 200, 0.8)' // 无效日期时使用灰色
+    }
+
+    const diffTime = Math.abs(now.getTime() - commitDate.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    const maxDays = 4 // 与水位效果保持一致
+    const ratio = diffDays / maxDays
+
+    if (ratio <= 0.25) {
+      // 0-1天：绿色系
+      return 'rgba(82, 196, 26, 0.8)'
+    } else if (ratio <= 0.5) {
+      // 2天：黄色系
+      return 'rgba(250, 173, 20, 0.8)'
+    } else if (ratio <= 0.75) {
+      // 3天：橙色系
+      return 'rgba(255, 136, 0, 0.8)'
+    } else {
+      // 4天+：红色系
+      return 'rgba(255, 77, 79, 0.8)'
+    }
+  } catch (error) {
+    return 'rgba(200, 200, 200, 0.8)' // 错误时使用灰色
+  }
+}
+
+// 判断是否为紧急任务（只有紧急任务才显示高亮红色）
+const isUrgentTask = (priority: number): boolean => {
+  return priority >= 8
 }
 
 
@@ -44,8 +77,9 @@ const TaskBar: React.FC<{
   const width = adjustedWorkHours < 5 ? minWidth : baseWidth // 小于5分钟时使用固定宽度
 
 
-  const color = getPriorityColor(task.priority)
-  const isUrgent = task.priority >= 8
+  // 紧急任务显示高亮红色，其他任务根据委托时间显示颜色
+  const isUrgent = isUrgentTask(task.priority)
+  const taskColor = isUrgent ? '#ff4d4f' : getTimeBasedColor(task.commitTime)
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -77,13 +111,15 @@ const TaskBar: React.FC<{
         style={{
           width: `${width}px`,
           height: `${barHeight}px`,
-          backgroundColor: task.masterName === '待分配' ? '#fff2f0' : 'rgba(200, 200, 200, 0.3)', // 改为浅灰色背景
+          backgroundColor: task.masterName === '待分配' ? '#fff2f0' :
+                          isUrgent ? 'rgba(255, 77, 79, 0.15)' : 'rgba(200, 200, 200, 0.3)',
           borderRadius: '3px',
           margin: '1px 3px 1px 0',
           position: 'relative',
           cursor: 'pointer',
           border: task.masterName === '待分配' ? '2px solid #ff4d4f' :
-                 task.status === 'inProgress' ? '1px solid #1890ff' : '1px solid rgba(200, 200, 200, 0.5)',
+                 isUrgent ? '2px solid #ff4d4f' :
+                 task.status === 'inProgress' ? '1px solid #1890ff' : `1px solid ${taskColor}`,
           opacity: task.status === 'completed' ? 0.7 : 1,
           display: 'inline-block',
           verticalAlign: 'top',
@@ -121,14 +157,16 @@ const TaskBar: React.FC<{
             top: '50%',
             left: '4px',
             transform: 'translateY(-50%)',
-            color: task.masterName === '待分配' ? '#ff4d4f' : 'white',
+            color: task.masterName === '待分配' ? '#ff4d4f' :
+                   isUrgent ? '#ff4d4f' : 'white',
             fontSize: Math.max(8, Math.min(14, barHeight - 4)) + 'px',
             fontWeight: 'bold',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             maxWidth: `${width - 20}px`,
-            textShadow: task.masterName === '待分配' ? 'none' : '1px 1px 1px rgba(0,0,0,0.5)',
+            textShadow: task.masterName === '待分配' ? 'none' :
+                       isUrgent ? 'none' : '1px 1px 1px rgba(0,0,0,0.5)',
             zIndex: 1
           }}
         >
@@ -353,20 +391,24 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
           <Col>
             <Space>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px' }}>
-                <div style={{ width: '16px', height: '16px', backgroundColor: '#ff4d4f', marginRight: '4px', borderRadius: '2px' }} />
-                高优先级
+                <div style={{ width: '16px', height: '16px', backgroundColor: 'rgba(82, 196, 26, 0.8)', marginRight: '4px', borderRadius: '2px' }} />
+                0-1天
               </div>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px' }}>
-                <div style={{ width: '16px', height: '16px', backgroundColor: '#faad14', marginRight: '4px', borderRadius: '2px' }} />
-                中优先级
+                <div style={{ width: '16px', height: '16px', backgroundColor: 'rgba(250, 173, 20, 0.8)', marginRight: '4px', borderRadius: '2px' }} />
+                2天
               </div>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px' }}>
-                <div style={{ width: '16px', height: '16px', backgroundColor: '#52c41a', marginRight: '4px', borderRadius: '2px' }} />
-                低优先级
+                <div style={{ width: '16px', height: '16px', backgroundColor: 'rgba(255, 136, 0, 0.8)', marginRight: '4px', borderRadius: '2px' }} />
+                3天
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px' }}>
+                <div style={{ width: '16px', height: '16px', backgroundColor: 'rgba(255, 77, 79, 0.8)', marginRight: '4px', borderRadius: '2px' }} />
+                4天+
               </div>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px' }}>
                 <ExclamationCircleFilled style={{ color: '#ff4d4f', marginRight: '4px' }} />
-                紧急标记
+                紧急任务
               </div>
             </Space>
           </Col>

@@ -73,6 +73,15 @@
   background: #bfbfbf;
 }
 
+/* 紧急任务开关样式 */
+.ant-switch-checked {
+  background-color: #ff4d4f !important;
+}
+
+.ant-switch-checked:hover:not(.ant-switch-disabled) {
+  background-color: #ff7875 !important;
+}
+
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);

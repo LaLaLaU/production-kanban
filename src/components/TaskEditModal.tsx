@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react'
+import { AlertOutlined, CalendarOutlined, ClockCircleOutlined, UserOutlined } from '@ant-design/icons'
 import {
-  Modal,
-  Form,
-  Input,
-  Select,
-  InputNumber,
-  Button,
-  Space,
-  message,
-  Divider,
-  Slider,
-  Typography
+    Button,
+    Divider,
+    Form,
+    Input,
+    InputNumber,
+    Modal,
+    Select,
+    Slider,
+    Space,
+    Switch,
+    Typography,
+    message
 } from 'antd'
-import { UserOutlined, ClockCircleOutlined, CalendarOutlined, AlertOutlined } from '@ant-design/icons'
+import React, { useEffect, useState } from 'react'
 // import dayjs from 'dayjs' // 暂时不使用dayjs
 import type { Task } from '../types'
 
@@ -50,7 +51,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
         batchNumber: task.batchNumber,
         clientName: task.clientName,
         commitTime: task.commitTime,
-        priority: task.priority,
+        isUrgent: task.priority >= 8, // 转换为布尔值
         status: task.status,
         coefficient: task.coefficient || 1
       })
@@ -61,7 +62,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
     try {
       setLoading(true)
       const values = await form.validateFields()
-      
+
       if (!task) return
 
       const updatedTask: Task = {
@@ -72,7 +73,7 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
         batchNumber: values.batchNumber,
         clientName: values.clientName,
         commitTime: values.commitTime || task.commitTime,
-        priority: values.priority,
+        priority: values.isUrgent ? 8 : 5, // 紧急为8，非紧急为5
         status: values.status,
         coefficient: values.coefficient || 1
       }
@@ -198,15 +199,15 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
           }
           extra="调整实际工时难度，1.0表示标准工时，2.0表示双倍难度"
         >
-          <Form.Item noStyle dependencies={['coefficient', 'workHours', 'priority']}>
+          <Form.Item noStyle dependencies={['coefficient', 'workHours', 'isUrgent']}>
             {({ getFieldValue }) => {
               const currentCoefficient = getFieldValue('coefficient') || 1
               const currentWorkHours = getFieldValue('workHours') || 0
-              const currentPriority = getFieldValue('priority') || 1
+              const currentIsUrgent = getFieldValue('isUrgent') || false
               const adjustedWorkHours = currentWorkHours * currentCoefficient
               const taskBarWidth = Math.max(60, Math.min(400, adjustedWorkHours * 1.5))
-              const taskBarColor = currentPriority >= 8 ? '#ff4d4f' : currentPriority >= 5 ? '#faad14' : '#52c41a'
-              
+              const taskBarColor = currentIsUrgent ? '#ff4d4f' : '#52c41a'
+
               return (
                 <div>
                   <Space style={{ width: '100%' }} direction="vertical" size={8}>
@@ -235,8 +236,8 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
                     {/* 任务条预览 */}
                     <div style={{ marginTop: 8 }}>
                       <Text type="secondary" style={{ fontSize: '12px' }}>任务条预览:</Text>
-                      <div style={{ 
-                        marginTop: 4, 
+                      <div style={{
+                        marginTop: 4,
                         padding: '8px',
                         backgroundColor: '#f5f5f5',
                         borderRadius: '4px'
@@ -265,8 +266,8 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
                             }}
                           >
                             <div>{task?.productName || '产品名称'}</div>
-                            <div style={{ 
-                              fontSize: taskBarWidth < 100 ? '7px' : '8px', 
+                            <div style={{
+                              fontSize: taskBarWidth < 100 ? '7px' : '8px',
                               opacity: 0.9,
                               fontWeight: 'normal'
                             }}>
@@ -288,49 +289,15 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
 
         <Space.Compact style={{ display: 'flex', width: '100%' }}>
           <Form.Item
-            name="priority"
-            label="优先级"
+            name="isUrgent"
+            label="紧急任务"
             style={{ flex: 1, marginRight: 16 }}
-            rules={[{ required: true, message: '请选择优先级' }]}
+            valuePropName="checked"
           >
-            <Select placeholder="选择优先级">
-              <Option value={1}>
-                <Space>
-                  <div style={{ width: 12, height: 12, backgroundColor: '#52c41a', borderRadius: 2 }} />
-                  1 - 低优先级
-                </Space>
-              </Option>
-              <Option value={3}>
-                <Space>
-                  <div style={{ width: 12, height: 12, backgroundColor: '#52c41a', borderRadius: 2 }} />
-                  3 - 一般
-                </Space>
-              </Option>
-              <Option value={5}>
-                <Space>
-                  <div style={{ width: 12, height: 12, backgroundColor: '#faad14', borderRadius: 2 }} />
-                  5 - 重要
-                </Space>
-              </Option>
-              <Option value={7}>
-                <Space>
-                  <div style={{ width: 12, height: 12, backgroundColor: '#faad14', borderRadius: 2 }} />
-                  7 - 很重要
-                </Space>
-              </Option>
-              <Option value={8}>
-                <Space>
-                  <div style={{ width: 12, height: 12, backgroundColor: '#ff4d4f', borderRadius: 2 }} />
-                  8 - 紧急
-                </Space>
-              </Option>
-              <Option value={10}>
-                <Space>
-                  <div style={{ width: 12, height: 12, backgroundColor: '#ff4d4f', borderRadius: 2 }} />
-                  10 - 极紧急
-                </Space>
-              </Option>
-            </Select>
+            <Switch
+              checkedChildren="紧急"
+              unCheckedChildren="普通"
+            />
           </Form.Item>
 
           <Form.Item
@@ -388,4 +355,4 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
   )
 }
 
-export default TaskEditModal 
+export default TaskEditModal
