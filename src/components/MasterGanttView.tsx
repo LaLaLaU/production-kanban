@@ -1,5 +1,6 @@
 
-import { Card, Col, Row, Space, Tooltip, Typography } from 'antd'
+import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd'
+import { SortDescendingOutlined, UnorderedListOutlined } from '@ant-design/icons'
 import React, { useEffect, useMemo, useState } from 'react'
 import type { Task } from '../types'
 import GanttWaterLevel from './GanttWaterLevel'
@@ -171,11 +172,14 @@ const MasterRow: React.FC<{
   onEditTask?: (task: Task) => void
   rowHeight: number
   pixelsPerMinute: number
-}> = ({ masterName, tasks, onEditTask, rowHeight, pixelsPerMinute }) => {
-  // 按委托时间排序任务
+  showRanking?: boolean
+  ranking?: number
+  totalWorkHours?: number
+}> = ({ masterName, tasks, onEditTask, rowHeight, pixelsPerMinute, showRanking = false, ranking, totalWorkHours }) => {
+  // 按委托时间排序任务，过滤掉已完成的任务
   const sortedTasks = useMemo(() => {
     return tasks
-      .filter(task => task.masterName === masterName)
+      .filter(task => task.masterName === masterName && task.status !== 'completed')
       .sort((a, b) => new Date(a.commitTime).getTime() - new Date(b.commitTime).getTime())
   }, [tasks, masterName])
 
@@ -193,13 +197,48 @@ const MasterRow: React.FC<{
         paddingRight: '12px',
         borderRight: '1px solid #f0f0f0'
       }}>
-        <Text strong style={{
-          fontSize: Math.max(10, Math.min(16, Math.max(14, rowHeight - 8))) + 'px',
-          lineHeight: '1.2',
-          color: masterName === '待分配' ? '#ff4d4f' : 'inherit'
-        }}>
-          {masterName}
-        </Text>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
+          <Text strong style={{
+            fontSize: Math.max(10, Math.min(16, Math.max(14, rowHeight - 8))) + 'px',
+            lineHeight: '1.2',
+            color: masterName === '待分配' ? '#ff4d4f' : 'inherit'
+          }}>
+            {showRanking && ranking && ranking <= 3 && (
+              <span style={{
+                display: 'inline-block',
+                marginRight: '4px',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                color: ranking === 1 ? '#faad14' : ranking === 2 ? '#d9d9d9' : '#cd7f32',
+                backgroundColor: ranking === 1 ? '#fff7e6' : ranking === 2 ? '#f5f5f5' : '#fdf6ec',
+                padding: '1px 4px',
+                borderRadius: '2px',
+                border: `1px solid ${ranking === 1 ? '#faad14' : ranking === 2 ? '#d9d9d9' : '#cd7f32'}`
+              }}>
+                #{ranking}
+              </span>
+            )}
+            {showRanking && ranking && ranking > 3 && (
+              <span style={{
+                display: 'inline-block',
+                marginRight: '4px',
+                fontSize: '10px',
+                color: '#666'
+              }}>
+                #{ranking}
+              </span>
+            )}
+            {masterName}
+          </Text>
+          {showRanking && totalWorkHours !== undefined && totalWorkHours > 0 && (
+            <Text type="secondary" style={{
+              fontSize: Math.max(8, Math.min(12, rowHeight - 12)) + 'px',
+              lineHeight: '1.1'
+            }}>
+              {Math.round(totalWorkHours)}分钟
+            </Text>
+          )}
+        </div>
       </div>
       <div style={{
         flex: 1,
@@ -287,6 +326,7 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [containerHeight, setContainerHeight] = useState(0)
   const [containerWidth, setContainerWidth] = useState(0)
+  const [sortByWorkload, setSortByWorkload] = useState(false)
 
   // 计算可用高度和宽度
   useEffect(() => {
@@ -344,10 +384,41 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
     setEditingTask(null)
   }
 
+  // 计算师傅的工时量并排序
+  const sortedMasters = useMemo(() => {
+    if (!sortByWorkload) {
+      return MASTERS
+    }
+
+    // 计算每个师傅的总工时量（只计算未完成的任务）
+    const masterWorkloads = MASTERS.map(master => {
+      const masterTasks = tasks.filter(t =>
+        t.masterName === master && t.status !== 'completed'
+      )
+      const totalWorkHours = masterTasks.reduce((sum, task) => {
+        const coefficient = task.coefficient || 1
+        return sum + (task.workHours * coefficient)
+      }, 0)
+
+      return {
+        name: master,
+        workload: totalWorkHours,
+        taskCount: masterTasks.length
+      }
+    })
+
+    // 按工时量从多到少排序
+    return masterWorkloads
+      .sort((a, b) => b.workload - a.workload)
+      .map(item => item.name)
+  }, [tasks, sortByWorkload])
+
   const stats = useMemo(() => {
-    const totalTasks = tasks.length
-    const urgentTasks = tasks.filter(t => t.priority >= 8).length
-    const activeMasters = new Set(tasks.filter(t => t.masterName && t.masterName !== '待分配').map(t => t.masterName)).size
+    // 只统计未完成的任务（待处理和进行中）
+    const activeTasks = tasks.filter(t => t.status !== 'completed')
+    const totalTasks = activeTasks.length
+    const urgentTasks = activeTasks.filter(t => t.priority >= 8).length
+    const activeMasters = new Set(activeTasks.filter(t => t.masterName && t.masterName !== '待分配').map(t => t.masterName)).size
 
     return {
       totalTasks,
@@ -365,14 +436,25 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
           </Col>
           <Col>
             <Space size={16}>
-              <Text>总任务: <strong>{stats.totalTasks}</strong></Text>
+              <Text>活跃任务: <strong>{stats.totalTasks}</strong></Text>
               <Text>紧急任务: <strong style={{ color: '#ff4d4f' }}>{stats.urgentTasks}</strong></Text>
               <Text>活跃师傅: <strong>{stats.activeMasters}/17</strong></Text>
+              <Text type="secondary">已完成任务已从甘特图中隐藏</Text>
               <Text type="secondary">双击任务条可编辑系数和责任人</Text>
-              <Text type="secondary">横向滚动查看超过600分钟的任务</Text>
             </Space>
           </Col>
           <Col flex="auto" />
+          <Col>
+            <Button
+              type={sortByWorkload ? 'primary' : 'default'}
+              icon={sortByWorkload ? <SortDescendingOutlined /> : <UnorderedListOutlined />}
+              onClick={() => setSortByWorkload(!sortByWorkload)}
+              size="small"
+              style={{ marginRight: 16 }}
+            >
+              {sortByWorkload ? '工时排名' : '默认排序'}
+            </Button>
+          </Col>
           <Col>
             <Space>
               <div style={{ display: 'flex', alignItems: 'center', fontSize: '12px' }}>
@@ -471,16 +553,29 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
             overflowY: 'auto',
             overflowX: 'hidden'
           }}>
-            {MASTERS.map(master => (
-              <MasterRow
-                key={master}
-                masterName={master}
-                tasks={tasks}
-                onEditTask={handleEditTask}
-                rowHeight={rowHeight}
-                pixelsPerMinute={pixelsPerMinute}
-              />
-            ))}
+            {sortedMasters.map((master, index) => {
+              const masterTasks = tasks.filter(t =>
+                t.masterName === master && t.status !== 'completed'
+              )
+              const totalWorkHours = masterTasks.reduce((sum, task) => {
+                const coefficient = task.coefficient || 1
+                return sum + (task.workHours * coefficient)
+              }, 0)
+
+              return (
+                <MasterRow
+                  key={master}
+                  masterName={master}
+                  tasks={tasks}
+                  onEditTask={handleEditTask}
+                  rowHeight={rowHeight}
+                  pixelsPerMinute={pixelsPerMinute}
+                  showRanking={sortByWorkload}
+                  ranking={index + 1}
+                  totalWorkHours={totalWorkHours}
+                />
+              )
+            })}
           </div>
         </div>
       </Card>
