@@ -209,7 +209,28 @@ function App() {
   // 处理任务变更
   const handleTasksChange = async (newTasks: Task[]) => {
     if (dbStatus.isInitialized) {
-      // SQLite模式：重新加载数据
+      // SQLite模式：先保存更新的任务，然后重新加载数据
+      console.log('🔄 SQLite模式：保存任务变更...')
+
+      // 找出被修改的任务
+      const changedTasks = newTasks.filter(newTask => {
+        const oldTask = tasks.find(t => t.id === newTask.id)
+        return oldTask && JSON.stringify(oldTask) !== JSON.stringify(newTask)
+      })
+
+      // 保存变更的任务
+      for (const task of changedTasks) {
+        const result = await sqliteService.saveTask(task)
+        if (!result.success) {
+          console.error('保存任务失败:', result.error)
+          message.error(`保存任务失败: ${result.error}`)
+          return
+        }
+      }
+
+      console.log(`✅ 已保存 ${changedTasks.length} 个任务变更`)
+
+      // 重新加载数据以确保界面同步
       await loadTasksFromSQLite(1)
     } else {
       // localStorage模式：直接更新状态

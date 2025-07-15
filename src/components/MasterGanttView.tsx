@@ -1,8 +1,9 @@
-import React, { useMemo, useState, useEffect } from 'react'
-import { Card, Typography, Row, Col, Space, Tooltip } from 'antd'
 import { ExclamationCircleFilled } from '@ant-design/icons'
-import TaskEditModal from './TaskEditModal'
+import { Card, Col, Row, Space, Tooltip, Typography } from 'antd'
+import React, { useEffect, useMemo, useState } from 'react'
 import type { Task } from '../types'
+import GanttWaterLevel from './GanttWaterLevel'
+import TaskEditModal from './TaskEditModal'
 
 const { Title, Text } = Typography
 
@@ -67,24 +68,33 @@ const TaskBar: React.FC<{
       }
       placement="top"
     >
-      <div
+                  <div
         style={{
           width: `${width}px`,
           height: `${barHeight}px`,
-          backgroundColor: task.masterName === '待分配' ? '#fff2f0' : color,
+          backgroundColor: task.masterName === '待分配' ? '#fff2f0' : 'rgba(200, 200, 200, 0.3)', // 改为浅灰色背景
           borderRadius: '3px',
           margin: '1px 3px 1px 0',
           position: 'relative',
           cursor: 'pointer',
-          border: task.masterName === '待分配' ? '2px solid #ff4d4f' : 
-                 task.status === 'inProgress' ? '1px solid #1890ff' : 'none',
+          border: task.masterName === '待分配' ? '2px solid #ff4d4f' :
+                 task.status === 'inProgress' ? '1px solid #1890ff' : '1px solid rgba(200, 200, 200, 0.5)',
           opacity: task.status === 'completed' ? 0.7 : 1,
           display: 'inline-block',
           verticalAlign: 'top',
-          boxShadow: '0 1px 2px rgba(0,0,0,0.15)'
+          boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+          overflow: 'hidden'
         }}
         onDoubleClick={handleDoubleClick}
       >
+        {/* 水位指示器 */}
+        <GanttWaterLevel
+          commitTime={task.commitTime}
+          width={width}
+          height={barHeight}
+          maxDays={4}
+        />
+
         {isUrgent && (
           <ExclamationCircleFilled
             style={{
@@ -94,7 +104,8 @@ const TaskBar: React.FC<{
               color: '#ff4d4f',
               fontSize: '9px',
               backgroundColor: 'white',
-              borderRadius: '50%'
+              borderRadius: '50%',
+              zIndex: 2
             }}
           />
         )}
@@ -111,7 +122,8 @@ const TaskBar: React.FC<{
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             maxWidth: `${width - 20}px`,
-            textShadow: task.masterName === '待分配' ? 'none' : '1px 1px 1px rgba(0,0,0,0.5)'
+            textShadow: task.masterName === '待分配' ? 'none' : '1px 1px 1px rgba(0,0,0,0.5)',
+            zIndex: 1
           }}
         >
           {task.productName}
@@ -138,20 +150,20 @@ const MasterRow: React.FC<{
   }, [tasks, masterName])
 
   return (
-    <div style={{ 
+    <div style={{
       height: `${rowHeight}px`,
       borderBottom: '1px solid #f0f0f0',
       display: 'flex',
       alignItems: 'center',
       padding: '0 8px'
     }}>
-      <div style={{ 
+      <div style={{
         width: '120px',
         flexShrink: 0,
         paddingRight: '12px',
         borderRight: '1px solid #f0f0f0'
       }}>
-        <Text strong style={{ 
+        <Text strong style={{
           fontSize: Math.max(10, Math.min(16, Math.max(14, rowHeight - 8))) + 'px',
           lineHeight: '1.2',
           color: masterName === '待分配' ? '#ff4d4f' : 'inherit'
@@ -159,7 +171,7 @@ const MasterRow: React.FC<{
           {masterName}
         </Text>
       </div>
-      <div style={{ 
+      <div style={{
         flex: 1,
         paddingLeft: '12px',
         position: 'relative',
@@ -180,7 +192,7 @@ const MasterRow: React.FC<{
           pointerEvents: 'none',
           zIndex: 1
         }} />
-        <div style={{ 
+        <div style={{
           position: 'relative',
           zIndex: 2,
           width: '100%',
@@ -248,7 +260,7 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
 
   const handleSaveTask = (updatedTask: Task) => {
     if (onTasksChange) {
-      const updatedTasks = tasks.map(task => 
+      const updatedTasks = tasks.map(task =>
         task.id === updatedTask.id ? updatedTask : task
       )
       onTasksChange(updatedTasks)
@@ -264,7 +276,7 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
     const totalTasks = tasks.length
     const urgentTasks = tasks.filter(t => t.priority >= 8).length
     const activeMasters = new Set(tasks.filter(t => t.masterName && t.masterName !== '待分配').map(t => t.masterName)).size
-    
+
     return {
       totalTasks,
       urgentTasks,
@@ -312,7 +324,7 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
       </Card>
 
       <Card style={{ flex: 1, overflow: 'hidden' }}>
-        <div style={{ 
+        <div style={{
           height: `${containerHeight}px`,
           display: 'flex',
           flexDirection: 'column',
@@ -359,7 +371,7 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
           </div>
 
           {/* 师傅行列表 */}
-          <div style={{ 
+          <div style={{
             flex: 1,
             overflowY: 'auto',
             overflowX: 'hidden'
@@ -387,4 +399,4 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
   )
 }
 
-export default MasterGanttView 
+export default MasterGanttView
