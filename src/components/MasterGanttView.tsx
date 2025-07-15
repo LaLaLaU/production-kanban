@@ -40,7 +40,8 @@ const TaskBar: React.FC<{
 
         // 使用自适应像素宽度计算，支持横向滚动
   const baseWidth = adjustedWorkHours * pixelsPerMinute
-  const width = Math.max(60, baseWidth) // 最小60px，不限制最大宽度以支持滚动
+  const minWidth = 5 * pixelsPerMinute // 5分钟任务的宽度作为最小宽度
+  const width = adjustedWorkHours < 5 ? minWidth : baseWidth // 小于5分钟时使用固定宽度
 
 
   const color = getPriorityColor(task.priority)
@@ -87,7 +88,8 @@ const TaskBar: React.FC<{
           display: 'inline-block',
           verticalAlign: 'top',
           boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          flexShrink: 0 // 防止任务条被压缩
         }}
         onDoubleClick={handleDoubleClick}
       >
@@ -211,7 +213,9 @@ const MasterRow: React.FC<{
             )
           })}
         </div>
-                <div style={{
+                <div
+          className="gantt-scroll-container"
+          style={{
             position: 'relative',
             zIndex: 2,
             width: '100%',
@@ -220,7 +224,10 @@ const MasterRow: React.FC<{
             whiteSpace: 'nowrap',
             height: '100%',
             display: 'flex',
-            alignItems: 'center'
+            alignItems: 'center',
+            minWidth: '100%', // 确保内容可以超出容器宽度
+            scrollbarWidth: 'thin', // Firefox
+            scrollbarColor: '#d9d9d9 #f5f5f5' // Firefox
           }}
         >
           {sortedTasks.length === 0 ? (
@@ -228,16 +235,23 @@ const MasterRow: React.FC<{
               暂无任务
             </Text>
           ) : (
-            sortedTasks.map(task => (
-              <TaskBar
-                key={task.id}
-                task={task}
-                maxWidth={999999} // 不限制最大宽度，支持横向滚动
-                onEdit={onEditTask}
-                barHeight={Math.max(14, rowHeight - 8)} // 调整任务条高度，保留上下边距
-                pixelsPerMinute={pixelsPerMinute}
-              />
-            ))
+            <div style={{
+              display: 'flex',
+              flexDirection: 'row',
+              alignItems: 'center',
+              minWidth: 'max-content' // 确保容器宽度适应内容
+            }}>
+              {sortedTasks.map(task => (
+                <TaskBar
+                  key={task.id}
+                  task={task}
+                  maxWidth={999999} // 不限制最大宽度，支持横向滚动
+                  onEdit={onEditTask}
+                  barHeight={Math.max(14, rowHeight - 8)} // 调整任务条高度，保留上下边距
+                  pixelsPerMinute={pixelsPerMinute}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>
@@ -332,6 +346,7 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
               <Text>紧急任务: <strong style={{ color: '#ff4d4f' }}>{stats.urgentTasks}</strong></Text>
               <Text>活跃师傅: <strong>{stats.activeMasters}/17</strong></Text>
               <Text type="secondary">双击任务条可编辑系数和责任人</Text>
+              <Text type="secondary">横向滚动查看超过600分钟的任务</Text>
             </Space>
           </Col>
           <Col flex="auto" />

@@ -49,6 +49,30 @@
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
+/* 甘特图横向滚动条样式 */
+.gantt-scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: #d9d9d9 #f5f5f5;
+}
+
+.gantt-scroll-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.gantt-scroll-container::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 4px;
+}
+
+.gantt-scroll-container::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 4px;
+}
+
+.gantt-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #bfbfbf;
+}
+
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);
