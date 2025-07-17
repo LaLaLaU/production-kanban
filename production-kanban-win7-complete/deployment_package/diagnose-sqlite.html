@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQLite 诊断工具</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #1890ff; }
+        .test-item {
+            margin: 15px 0;
+            padding: 15px;
+            border: 1px solid #e1e1e1;
+            border-radius: 4px;
+            background: #fafafa;
+        }
+        .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .success { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+        .error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+        .warning { background: #fffbe6; color: #faad14; border: 1px solid #ffe58f; }
+        .loading { background: #e6f7ff; color: #1890ff; border: 1px solid #91d5ff; }
+        pre {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button {
+            background: #1890ff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #40a9ff; }
+        .solution {
+            background: #e6f7ff;
+            border: 1px solid #91d5ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 SQLite WebAssembly 诊断工具</h1>
+        <p>此工具帮助诊断"正在初始化数据库..."卡住的问题</p>
+
+        <button onclick="runDiagnosis()">开始诊断</button>
+        <button onclick="clearResults()">清除结果</button>
+
+        <div id="results"></div>
+
+        <div class="solution">
+            <h3>💡 常见解决方案</h3>
+            <ol>
+                <li><strong>使用HTTP服务器</strong>：运行 start.bat 或 start-nodejs.bat</li>
+                <li><strong>检查WASM文件</strong>：确保 sql.js-wasm/ 目录存在且包含必要文件</li>
+                <li><strong>浏览器兼容性</strong>：使用 Chrome 58+ 或 Edge 79+</li>
+                <li><strong>网络问题</strong>：检查防火墙和代理设置</li>
+                <li><strong>清除缓存</strong>：按 Ctrl+F5 强制刷新</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        async function runDiagnosis() {
+            const results = document.getElementById('results');
+            results.innerHTML = '';
+
+            const tests = [
+                { name: '检查运行环境', test: checkEnvironment },
+                { name: '检查WASM文件', test: checkWasmFiles },
+                { name: '测试SQL.js加载', test: testSqlJsLoad },
+                { name: '测试WASM初始化', test: testWasmInit },
+                { name: '检查本地存储', test: checkLocalStorage },
+                { name: '网络连接测试', test: checkNetwork }
+            ];
+
+            for (const test of tests) {
+                await runTest(test.name, test.test);
+            }
+        }
+
+        async function runTest(name, testFn) {
+            const results = document.getElementById('results');
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test-item';
+            testDiv.innerHTML = `<strong>${name}</strong><span class="status loading">测试中...</span>`;
+            results.appendChild(testDiv);
+
+            try {
+                const result = await testFn();
+                const statusClass = result.success ? 'success' : 'error';
+                const statusText = result.success ? '✅ 通过' : '❌ 失败';
+                testDiv.innerHTML = `
+                    <strong>${name}</strong><span class="status ${statusClass}">${statusText}</span>
+                    <pre>${result.message}</pre>
+                `;
+            } catch (error) {
+                testDiv.innerHTML = `
+                    <strong>${name}</strong><span class="status error">❌ 异常</span>
+                    <pre>错误: ${error.message}</pre>
+                `;
+            }
+        }
+
+        async function checkEnvironment() {
+            const info = {
+                userAgent: navigator.userAgent,
+                protocol: location.protocol,
+                host: location.host,
+                pathname: location.pathname,
+                webAssembly: typeof WebAssembly !== 'undefined',
+                localStorage: typeof localStorage !== 'undefined',
+                fetch: typeof fetch !== 'undefined'
+            };
+
+            const issues = [];
+            if (location.protocol === 'file:') {
+                issues.push('⚠️ 使用file://协议，可能导致CORS问题');
+            }
+            if (!info.webAssembly) {
+                issues.push('❌ 浏览器不支持WebAssembly');
+            }
+
+            return {
+                success: issues.length === 0,
+                message: `环境信息:\n${JSON.stringify(info, null, 2)}\n\n问题:\n${issues.join('\n') || '无问题'}`
+            };
+        }
+
+        async function checkWasmFiles() {
+            const files = ['sql-wasm.js', 'sql-wasm.wasm'];
+            const results = [];
+
+            for (const file of files) {
+                try {
+                    const response = await fetch(`./sql.js-wasm/${file}`);
+                    results.push(`${file}: ${response.ok ? '✅ 存在' : '❌ 不存在'} (${response.status})`);
+                } catch (error) {
+                    results.push(`${file}: ❌ 加载失败 - ${error.message}`);
+                }
+            }
+
+            const allOk = results.every(r => r.includes('✅'));
+            return {
+                success: allOk,
+                message: results.join('\n')
+            };
+        }
+
+        async function testSqlJsLoad() {
+            try {
+                // 尝试加载sql-wasm.js
+                const script = document.createElement('script');
+                script.src = './sql.js-wasm/sql-wasm.js';
+
+                const loadPromise = new Promise((resolve, reject) => {
+                    script.onload = () => resolve('✅ sql-wasm.js 加载成功');
+                    script.onerror = () => reject(new Error('sql-wasm.js 加载失败'));
+                    setTimeout(() => reject(new Error('加载超时')), 10000);
+                });
+
+                document.head.appendChild(script);
+                const result = await loadPromise;
+
+                return {
+                    success: true,
+                    message: result + '\ninitSqlJs 函数: ' + (typeof window.initSqlJs !== 'undefined' ? '✅ 可用' : '❌ 不可用')
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    message: `SQL.js 加载失败: ${error.message}`
+                };
+            }
+        }
+
+        async function testWasmInit() {
+            try {
+                if (typeof window.initSqlJs === 'undefined') {
+                    throw new Error('initSqlJs 函数不可用');
+                }
+
+                const SQL = await window.initSqlJs({
+                    locateFile: (file) => `./sql.js-wasm/${file}`
+                });
+
+                const db = new SQL.Database();
+                const result = db.exec('SELECT 1 as test');
+
+                return {
+                    success: true,
+                    message: `✅ WASM 初始化成功\n测试查询结果: ${JSON.stringify(result)}`
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    message: `WASM 初始化失败: ${error.message}`
+                };
+            }
+        }
+
+        async function checkLocalStorage() {
+            try {
+                const testKey = 'sqlite_test_' + Date.now();
+                localStorage.setItem(testKey, 'test');
+                const value = localStorage.getItem(testKey);
+                localStorage.removeItem(testKey);
+
+                const dbData = localStorage.getItem('sqlite_db_data');
+
+                return {
+                    success: true,
+                    message: `✅ 本地存储可用\n现有数据库: ${dbData ? '✅ 存在' : '❌ 不存在'}\n存储大小: ${dbData ? (dbData.length / 1024).toFixed(2) + ' KB' : '0 KB'}`
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    message: `本地存储测试失败: ${error.message}`
+                };
+            }
+        }
+
+        async function checkNetwork() {
+            const testUrls = [
+                './index.html',
+                './assets/index-CAdmBbbr.js',
+                './sql.js-wasm/sql-wasm.js'
+            ];
+
+            const results = [];
+            for (const url of testUrls) {
+                try {
+                    const start = Date.now();
+                    const response = await fetch(url, { method: 'HEAD' });
+                    const time = Date.now() - start;
+                    results.push(`${url}: ${response.ok ? '✅' : '❌'} (${time}ms)`);
+                } catch (error) {
+                    results.push(`${url}: ❌ ${error.message}`);
+                }
+            }
+
+            return {
+                success: true,
+                message: results.join('\n')
+            };
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

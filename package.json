@@ -24,6 +24,7 @@
     "coverage": "vitest run --coverage",
     "electron": "electron electron/main.js",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron electron/main.js\"",
+    "electron:build": "npm run build && electron-builder",
     "clean": "rimraf dist node_modules/.cache",
     "typecheck": "tsc --noEmit"
   },
@@ -35,6 +36,7 @@
     "@types/papaparse": "^5.3.16",
     "@types/sql.js": "^1.4.9",
     "antd": "^5.26.4",
+    "better-sqlite3": "^8.7.0",
     "papaparse": "^5.5.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -50,7 +52,8 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "concurrently": "^8.2.2",
-    "electron": "^32.2.5",
+    "electron": "^22.3.27",
+    "electron-builder": "^24.13.3",
     "eslint": "^9.30.1",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
@@ -63,5 +66,25 @@
     "vite": "^7.0.4",
     "vitest": "^3.2.4",
     "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.production.kanban",
+    "productName": "生产看板",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

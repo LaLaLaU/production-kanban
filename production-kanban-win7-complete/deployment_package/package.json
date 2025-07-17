@@ -1,0 +1,10 @@
+{
+  "name": "production-kanban-deployment",
+  "version": "1.0.0",
+  "description": "Production Kanban System - Deployment Package",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
