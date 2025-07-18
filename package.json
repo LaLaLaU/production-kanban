@@ -17,7 +17,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "preview": "vite preview",
-    "serve": "node server.cjs",
+
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
