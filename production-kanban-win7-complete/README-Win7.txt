@@ -6,7 +6,7 @@
 无需安装任何环境，开箱即用，完美兼容 Windows 7+ 系统。
 
 📁 目录结构
-├── deployment_package/          # 应用程序文件
+
 ├── runtime/                     # 运行时环境
 │   └── python/                  # Python 3.8.10 嵌入式版本（已内置）
 ├── start-python-portable.bat    # Python 启动脚本（推荐）
@@ -21,8 +21,7 @@
 
 步骤2：启动应用
 方式1（推荐）：双击 start-python-portable.bat
-方式2（备选）：进入 deployment_package 文件夹，双击 start.bat
-方式3（应急）：进入 deployment_package 文件夹，双击 index.html
+
 
 📋 兼容性说明
 
@@ -39,7 +38,7 @@
 解决：检查 runtime\python\python.exe 文件是否存在和完整
 
 问题2：浏览器显示"正在初始化数据库..."
-解决：运行 deployment_package\diagnose-sqlite.html 进行诊断
+解决：检查数据库文件权限和路径
 
 问题3：端口被占用
 解决：关闭其他占用8000端口的程序

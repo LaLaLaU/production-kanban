@@ -27,12 +27,12 @@ echo Starting HTTP server...
 echo Port: 8000
 echo Access: http://localhost:8000
 echo.
-cd deployment_package
+
 echo Starting server... (Press Ctrl+C to stop)
 echo Browser should open automatically
 start http://localhost:8000
-"..\runtime\python\python.exe" -m http.server 8000
 cd ..
+".\production-kanban-win7-complete\runtime\python\python.exe" server.py
 echo.
 echo Server stopped.
 echo Press any key to close...

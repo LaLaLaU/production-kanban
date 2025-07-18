@@ -29,7 +29,7 @@ from urllib.parse import unquote
 
 # 配置
 PORT = 8000
-DIRECTORY = "dist"  # 构建后的文件目录
+DIRECTORY = "dist"  # 构建后的目录
 
 class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     """自定义HTTP请求处理器"""
@@ -59,14 +59,12 @@ def check_directory():
     """检查目录是否存在"""
     if not os.path.exists(DIRECTORY):
         print(f"错误：目录 '{DIRECTORY}' 不存在")
-        print("请先运行 'npm run build' 构建应用")
         return False
     
     index_file = os.path.join(DIRECTORY, 'index.html')
     if not os.path.exists(index_file):
-        print(f"错误：找不到 '{index_file}'")
-        print("请确保应用已正确构建")
-        return False
+        print(f"警告：找不到 '{index_file}'")
+        print("将直接服务当前目录的文件")
     
     return True
 

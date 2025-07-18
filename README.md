@@ -52,8 +52,7 @@ npm run dev
 # 构建生产版本
 npm run build
 
-# 运行Electron应用
-npm run electron
+
 ```
 
 ## 📚 使用说明
@@ -77,7 +76,7 @@ npm run electron
 - **前端**: React 19 + TypeScript + Ant Design
 - **数据库**: SQLite (sql.js WASM)
 - **构建工具**: Vite
-- **桌面应用**: Electron
+
 - **测试框架**: Vitest
 
 ## 📁 项目结构
@@ -85,7 +84,7 @@ npm run electron
 ```
 production-kanban/
 ├── src/                    # 源代码
-├── electron/               # Electron应用
+
 ├── scripts/                # 启动脚本
 ├── tests/                  # 测试相关
 ├── docs/                   # 文档

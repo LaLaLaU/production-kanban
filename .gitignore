@@ -93,10 +93,7 @@ jspm_packages/
 # Zone.Identifier files (Windows)
 *.Zone.Identifier
 
-# Deployment directories
-static-deploy/
-intranet-deploy/
-dist-electron/
+
 
 # Database files
 database/
