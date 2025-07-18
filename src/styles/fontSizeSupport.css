@@ -1,0 +1,281 @@
+/* 字体大小支持样式 */
+:root {
+  --font-scale: 1;
+  --content-scale: 1;
+}
+
+/* 基础字体缩放 */
+body {
+  font-size: calc(14px * var(--font-scale));
+  transform-origin: top left;
+}
+
+/* 标题字体缩放 */
+h1, .ant-typography h1 {
+  font-size: calc(32px * var(--font-scale)) !important;
+}
+
+h2, .ant-typography h2 {
+  font-size: calc(24px * var(--font-scale)) !important;
+}
+
+h3, .ant-typography h3 {
+  font-size: calc(20px * var(--font-scale)) !important;
+}
+
+h4, .ant-typography h4 {
+  font-size: calc(16px * var(--font-scale)) !important;
+}
+
+h5, .ant-typography h5 {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+/* Ant Design 组件字体缩放 */
+.ant-btn {
+  font-size: calc(14px * var(--font-scale)) !important;
+  height: calc(32px * var(--font-scale)) !important;
+  padding: calc(4px * var(--font-scale)) calc(15px * var(--font-scale)) !important;
+  line-height: calc(22px * var(--font-scale)) !important;
+}
+
+.ant-btn-lg {
+  font-size: calc(16px * var(--font-scale)) !important;
+  height: calc(40px * var(--font-scale)) !important;
+  padding: calc(6px * var(--font-scale)) calc(15px * var(--font-scale)) !important;
+}
+
+.ant-btn-sm {
+  font-size: calc(12px * var(--font-scale)) !important;
+  height: calc(24px * var(--font-scale)) !important;
+  padding: calc(0px * var(--font-scale)) calc(7px * var(--font-scale)) !important;
+}
+
+/* 表格字体缩放 */
+.ant-table {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+.ant-table-thead > tr > th {
+  font-size: calc(14px * var(--font-scale)) !important;
+  padding: calc(16px * var(--font-scale)) !important;
+}
+
+.ant-table-tbody > tr > td {
+  font-size: calc(14px * var(--font-scale)) !important;
+  padding: calc(16px * var(--font-scale)) !important;
+}
+
+/* 输入框字体缩放 */
+.ant-input {
+  font-size: calc(14px * var(--font-scale)) !important;
+  height: calc(32px * var(--font-scale)) !important;
+  padding: calc(4px * var(--font-scale)) calc(11px * var(--font-scale)) !important;
+}
+
+.ant-input-lg {
+  font-size: calc(16px * var(--font-scale)) !important;
+  height: calc(40px * var(--font-scale)) !important;
+  padding: calc(6px * var(--font-scale)) calc(11px * var(--font-scale)) !important;
+}
+
+/* 选择器字体缩放 */
+.ant-select {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+.ant-select-selector {
+  height: calc(32px * var(--font-scale)) !important;
+  padding: calc(0px * var(--font-scale)) calc(11px * var(--font-scale)) !important;
+}
+
+.ant-select-selection-item {
+  font-size: calc(14px * var(--font-scale)) !important;
+  line-height: calc(30px * var(--font-scale)) !important;
+}
+
+/* 下拉菜单字体缩放 */
+.ant-dropdown-menu {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+.ant-dropdown-menu-item {
+  font-size: calc(14px * var(--font-scale)) !important;
+  padding: calc(5px * var(--font-scale)) calc(12px * var(--font-scale)) !important;
+}
+
+/* 消息提示字体缩放 */
+.ant-message {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+.ant-notification {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+/* 模态框字体缩放 */
+.ant-modal {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+.ant-modal-title {
+  font-size: calc(16px * var(--font-scale)) !important;
+}
+
+.ant-modal-body {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+/* 看板特定组件缩放 */
+.kanban-column-title {
+  font-size: calc(16px * var(--font-scale)) !important;
+}
+
+.kanban-column-count {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+/* 看板列样式缩放 */
+.kanban-column {
+  padding: calc(16px * var(--font-scale)) !important;
+}
+
+.kanban-column-header {
+  margin-bottom: calc(16px * var(--font-scale)) !important;
+  padding-bottom: calc(12px * var(--font-scale)) !important;
+}
+
+/* 任务卡片字体缩放 */
+.task-card {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+.task-card .task-title {
+  font-size: calc(16px * var(--font-scale)) !important;
+}
+
+.task-card .task-meta {
+  font-size: calc(12px * var(--font-scale)) !important;
+}
+
+/* Ant Design Card 组件内的文本缩放 */
+.ant-card {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+.ant-card-head {
+  font-size: calc(16px * var(--font-scale)) !important;
+}
+
+.ant-card-head-title {
+  font-size: calc(16px * var(--font-scale)) !important;
+}
+
+.ant-card-body {
+  font-size: calc(14px * var(--font-scale)) !important;
+  padding: calc(12px * var(--font-scale)) !important;
+}
+
+.ant-card-small .ant-card-body {
+  padding: calc(12px * var(--font-scale)) !important;
+}
+
+/* 任务卡片内的具体元素 */
+.ant-card .ant-typography {
+  font-size: inherit !important;
+}
+
+.ant-card .anticon {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+/* Tag 标签缩放 */
+.ant-tag {
+  font-size: calc(12px * var(--font-scale)) !important;
+  padding: calc(0px * var(--font-scale)) calc(7px * var(--font-scale)) !important;
+  line-height: calc(20px * var(--font-scale)) !important;
+}
+
+/* Badge 徽章缩放 */
+.ant-badge {
+  font-size: calc(12px * var(--font-scale)) !important;
+}
+
+.ant-badge-count {
+  font-size: calc(12px * var(--font-scale)) !important;
+  min-width: calc(20px * var(--font-scale)) !important;
+  height: calc(20px * var(--font-scale)) !important;
+  line-height: calc(18px * var(--font-scale)) !important;
+}
+
+/* Space 间距组件缩放 */
+.ant-space-item {
+  font-size: inherit !important;
+}
+
+/* 甘特图字体缩放 */
+.gantt-task-text {
+  font-size: calc(12px * var(--font-scale)) !important;
+}
+
+.gantt-header-text {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+/* 图标缩放 */
+.anticon {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+.ant-btn .anticon {
+  font-size: calc(14px * var(--font-scale)) !important;
+}
+
+/* 大屏幕优化：整体内容缩放 */
+@media (min-width: 1920px) {
+  .kanban-container {
+    transform: scale(var(--content-scale));
+    transform-origin: top left;
+    width: calc(100% / var(--content-scale));
+    height: calc(100% / var(--content-scale));
+  }
+}
+
+/* 超大字体时的特殊优化 */
+[data-font-size="xxlarge"] .ant-layout-header {
+  height: calc(64px * var(--font-scale)) !important;
+  line-height: calc(64px * var(--font-scale)) !important;
+}
+
+[data-font-size="xxlarge"] .kanban-content {
+  height: calc(100vh - 64px * var(--font-scale)) !important;
+}
+
+/* 响应式字体大小调整 */
+@media (max-width: 768px) {
+  :root {
+    --font-scale: calc(var(--font-scale) * 0.9);
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --font-scale: calc(var(--font-scale) * 0.8);
+  }
+}
+
+/* 打印时保持标准字体大小 */
+@media print {
+  :root {
+    --font-scale: 1 !important;
+    --content-scale: 1 !important;
+  }
+  
+  body {
+    transform: none !important;
+  }
+  
+  .kanban-container {
+    transform: none !important;
+  }
+}

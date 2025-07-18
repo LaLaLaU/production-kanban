@@ -3,11 +3,14 @@ import { Alert, Button, Layout, message, notification, Space, Spin, Typography }
 import React, { useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
 import DatabaseManagement from './components/DatabaseManagement'
+import FontSizeSettings from './components/FontSizeSettings'
 import ImportModal from './components/ImportModal'
+import KeepScreenAwake from './components/KeepScreenAwake'
 import MasterGanttView from './components/MasterGanttView'
 import { DataMigrationService, initAutoMigration } from './services/dataMigration'
 import { LocalStorageService } from './services/localStorage'
 import { sqliteService } from './services/sqliteService'
+import './styles/fontSizeSupport.css'
 import type { Task } from './types'
 
 const { Header, Content } = Layout
@@ -424,6 +427,8 @@ function App() {
             </div>
 
             <Space size="large">
+              <FontSizeSettings />
+              <KeepScreenAwake />
               <Button
                 type="primary"
                 icon={<UploadOutlined />}
