@@ -76,11 +76,8 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
         productCode: task.productCode,
         masterName: task.masterName,
         workHours: task.workHours,
-        batchNumber: task.batchNumber,
-        clientName: task.clientName,
         commitTime: formatForDatetimeLocal(task.commitTime),
         isUrgent: task.priority >= 8, // 转换为布尔值
-        status: task.status,
         coefficient: task.coefficient || 1,
         // 扩展字段
         processOrderId: task.processOrderId,
@@ -130,8 +127,8 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
         productCode: values.productCode,
         masterName: values.masterName || '待分配',
         workHours: values.workHours,
-        batchNumber: values.batchNumber,
-        clientName: values.clientName,
+        batchNumber: task.batchNumber, // 保持原始批次号
+        clientName: task.clientName, // 保持原始客户名称
         commitTime: formatFromDatetimeLocal(values.commitTime) || task.commitTime,
         priority: values.isUrgent ? 8 : 5, // 紧急为8，非紧急为5
         status: task.status, // 保持原始状态，因为表单中已经没有状态字段
@@ -384,28 +381,6 @@ const TaskEditModal: React.FC<TaskEditModalProps> = ({
         </Form.Item>
 
         <Divider />
-
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item
-              name="batchNumber"
-              label="批次号"
-              rules={[{ required: true, message: '请输入批次号' }]}
-            >
-              <Input placeholder="请输入批次号" />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              name="clientName"
-              label="客户名称"
-              rules={[{ required: true, message: '请输入客户名称' }]}
-            >
-              <Input placeholder="请输入客户名称" />
-            </Form.Item>
-          </Col>
-        </Row>
-
 
         <Divider orientation="left">委托信息</Divider>
 
