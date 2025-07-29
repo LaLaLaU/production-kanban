@@ -8,7 +8,7 @@ const { Title, Text } = Typography
 interface MasterStats {
   total: number
   pending: number
-  inProgress: number
+  'in-progress': number
   completed: number
   totalHours: number
 }
@@ -21,13 +21,13 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ tasks }) => {
   const stats = useMemo(() => {
     const totalTasks = tasks.length
     const pendingTasks = tasks.filter(t => t.status === 'pending').length
-    const inProgressTasks = tasks.filter(t => t.status === 'inProgress').length
+    const inProgressTasks = tasks.filter(t => t.status === 'in-progress').length
     const completedTasks = tasks.filter(t => t.status === 'completed').length
 
-    const totalWorkHours = tasks.reduce((sum, task) => sum + (task.workHours * (task.coefficient || 1)), 0)
+    const totalWorkHours = tasks.reduce((sum, task) => sum + (task.workHours * (task.coefficient || 1) * (task.quantity || 1)), 0)
     const completedWorkHours = tasks
       .filter(t => t.status === 'completed')
-      .reduce((sum, task) => sum + (task.workHours * (task.coefficient || 1)), 0)
+      .reduce((sum, task) => sum + (task.workHours * (task.coefficient || 1) * (task.quantity || 1)), 0)
     
     const progressPercentage = totalWorkHours > 0 ? (completedWorkHours / totalWorkHours) * 100 : 0
 
@@ -43,14 +43,14 @@ const StatsPanel: React.FC<StatsPanelProps> = ({ tasks }) => {
           acc[task.masterName] = {
             total: 0,
             completed: 0,
-            inProgress: 0,
+            'in-progress': 0,
             pending: 0,
             totalHours: 0
           }
         }
         acc[task.masterName].total++
         acc[task.masterName][task.status]++
-        acc[task.masterName].totalHours += task.workHours * (task.coefficient || 1)
+        acc[task.masterName].totalHours += task.workHours * (task.coefficient || 1) * (task.quantity || 1)
       }
       return acc
     }, {} as Record<string, MasterStats>)

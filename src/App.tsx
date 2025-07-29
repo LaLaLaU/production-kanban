@@ -212,8 +212,8 @@ function App() {
   // 处理任务变更
   const handleTasksChange = async (newTasks: Task[]) => {
     if (dbStatus.isInitialized) {
-      // SQLite模式：先保存更新的任务，然后重新加载数据
-      console.log('🔄 SQLite模式：保存任务变更...')
+      // SQLite模式
+      console.log('🔄 SQLite模式：处理任务变更...')
 
       // 找出被修改的任务
       const changedTasks = newTasks.filter(newTask => {
@@ -221,20 +221,37 @@ function App() {
         return oldTask && JSON.stringify(oldTask) !== JSON.stringify(newTask)
       })
 
-      // 保存变更的任务
+      console.log(`📊 检测到 ${changedTasks.length} 个任务变更`)
+
+      if (changedTasks.length === 0) {
+        console.log('⚠️ 没有检测到实际变更')
+        return
+      }
+
+      // 先更新本地状态，提供即时反馈
+      setTasks(newTasks)
+
+      // 保存变更的任务到数据库
+      let allSaved = true
       for (const task of changedTasks) {
         const result = await sqliteService.saveTask(task)
         if (!result.success) {
           console.error('保存任务失败:', result.error)
           message.error(`保存任务失败: ${result.error}`)
-          return
+          allSaved = false
+          break
         }
       }
 
-      console.log(`✅ 已保存 ${changedTasks.length} 个任务变更`)
-
-      // 重新加载数据以确保界面同步
-      await loadTasksFromSQLite(1)
+      if (allSaved) {
+        console.log(`✅ 已成功保存 ${changedTasks.length} 个任务到数据库`)
+        // 单个任务编辑时不需要重新加载整个数据集
+        // 只有在批量操作或导入时才需要重新加载
+      } else {
+        // 如果保存失败，回滚到原始状态
+        setTasks(tasks)
+        await loadTasksFromSQLite(1)
+      }
     } else {
       // localStorage模式：直接更新状态
       setTasks(newTasks)
@@ -246,6 +263,7 @@ function App() {
   const handleImport = async (importedTasks: Task[]) => {
     try {
       console.log(`🔄 开始导入 ${importedTasks.length} 个任务...`)
+      console.log('📊 导入的任务详情:', importedTasks.slice(0, 3))
 
       if (dbStatus.isInitialized) {
         // SQLite模式
@@ -260,6 +278,7 @@ function App() {
 
           await loadTasksFromSQLite(1)
           console.log('✅ 任务数据重新加载完成')
+          console.log('📊 重新加载后的任务数量:', tasks.length)
 
           message.success(`成功导入 ${importedTasks.length} 个任务`)
         } else {
@@ -305,7 +324,7 @@ function App() {
         '委托时间': task.commitTime,
         '优先级': task.priority,
         '状态': task.status === 'pending' ? '待处理' :
-                task.status === 'inProgress' ? '进行中' : '已完成'
+                task.status === 'in-progress' ? '进行中' : '已完成'
       }))
 
       const worksheet = XLSX.utils.json_to_sheet(exportData)

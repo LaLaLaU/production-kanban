@@ -1,0 +1,14 @@
+node_modules
+build
+dist
+.git
+.trae
+.log
+production-kanban-win7-complete
+tests
+*.xlsx
+*.csv
+*.log
+.vscode
+database
+deployment.log

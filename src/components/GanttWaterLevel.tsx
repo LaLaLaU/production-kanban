@@ -30,18 +30,6 @@ const GanttWaterLevel: React.FC<GanttWaterLevelProps> = ({
       const diffTime = Math.abs(now.getTime() - commitDate.getTime())
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
-      // 调试信息 - 仅在开发环境显示
-      if (process.env.NODE_ENV === 'development') {
-        console.log('GanttWaterLevel Debug:', {
-          commitTime,
-          commitDate: commitDate.toISOString(),
-          now: now.toISOString(),
-          diffTime,
-          diffDays,
-          maxDays
-        })
-      }
-
       return diffDays
     } catch (error) {
       console.error('Error calculating waiting days:', error)

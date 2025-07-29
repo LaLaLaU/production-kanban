@@ -7,12 +7,12 @@ class PortableSQLiteService {
 
   // 检测运行环境
   private isElectron(): boolean {
-    return typeof window !== 'undefined' && 
+    return typeof window !== 'undefined' &&
            (window as any).electronAPI !== undefined
   }
 
   private isTauri(): boolean {
-    return typeof window !== 'undefined' && 
+    return typeof window !== 'undefined' &&
            (window as any).__TAURI__ !== undefined
   }
 
@@ -41,7 +41,7 @@ class PortableSQLiteService {
   // Electron环境的SQLite初始化
   private async initElectronSQLite(): Promise<void> {
     const { ipcRenderer } = (window as any).electronAPI
-    
+
     // 通过IPC与主进程通信
     this.db = {
       exec: async (sql: string, params?: any[]) => {
@@ -62,7 +62,7 @@ class PortableSQLiteService {
   // Tauri环境的SQLite初始化
   private async initTauriSQLite(): Promise<void> {
     const { invoke } = (window as any).__TAURI__.tauri
-    
+
     this.db = {
       exec: async (sql: string, params?: any[]) => {
         return await invoke('db_exec', { sql, params })
@@ -117,6 +117,14 @@ class PortableSQLiteService {
         commit_time TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'pending',
         priority INTEGER DEFAULT 1,
+        -- 新增字段
+        process_order_id TEXT,
+        factory_code TEXT,
+        order_date TEXT,
+        delivery_time TEXT,
+        quantity INTEGER,
+        assigned_person TEXT,
+        assigned_team TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
@@ -154,13 +162,13 @@ class PortableSQLiteService {
       CREATE INDEX IF NOT EXISTS idx_tasks_time ON tasks(commit_time);
 
       -- 插入默认数据
-      INSERT OR IGNORE INTO masters (name) VALUES 
+      INSERT OR IGNORE INTO masters (name) VALUES
         ('潘敏'), ('黄尚斌'), ('钱伟'), ('蒋怀东'), ('江峰'),
         ('谢守刚'), ('周博'), ('秦龙'), ('王章良'), ('叶佩珺'),
         ('李雪'), ('昂洪涛'), ('刘庆'), ('王家龙'), ('叶建辉'),
         ('魏祯'), ('杨同');
 
-      INSERT OR IGNORE INTO settings (key, value) VALUES 
+      INSERT OR IGNORE INTO settings (key, value) VALUES
         ('coefficient', '1.2'),
         ('work_hours_per_day', '540');
     `
@@ -217,14 +225,17 @@ class PortableSQLiteService {
       INSERT OR REPLACE INTO tasks (
         id, product_name, product_code, work_hours, coefficient,
         master_name, batch_number, client_name, commit_time,
-        status, priority, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        status, priority, process_order_id, factory_code, order_date,
+        delivery_time, quantity, assigned_person, assigned_team, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `
 
     await this.db.run(sql, [
       task.id, task.productName, task.productCode, task.workHours,
       task.coefficient || 1, task.masterName, task.batchNumber,
-      task.clientName, task.commitTime, task.status, task.priority
+      task.clientName, task.commitTime, task.status, task.priority,
+      task.processOrderId, task.factoryCode, task.orderDate,
+      task.deliveryTime, task.quantity, task.assignedPerson, task.assignedTeam
     ])
 
     await this.saveToFile()
@@ -233,7 +244,7 @@ class PortableSQLiteService {
   // 批量保存
   async saveTasksBatch(tasks: Task[]): Promise<void> {
     await this.db.exec('BEGIN TRANSACTION')
-    
+
     try {
       for (const task of tasks) {
         await this.saveTask(task)
@@ -259,13 +270,13 @@ class PortableSQLiteService {
       // Web环境：保存到下载文件
       const data = this.db.export()
       const blob = new Blob([data], { type: 'application/x-sqlite3' })
-      
+
       // 触发下载（用户需要手动保存）
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
       link.download = 'production.db'
-      
+
       // 静默下载到指定位置（需要用户配合）
       console.log('数据库已更新，请保存到应用目录的database文件夹')
     }
@@ -276,7 +287,7 @@ class PortableSQLiteService {
     const data = await this.db.all('SELECT * FROM tasks')
     const settings = await this.db.all('SELECT * FROM settings')
     const masters = await this.db.all('SELECT * FROM masters')
-    
+
     const package_data = {
       type: 'portable_kanban',
       version: '1.0.0',
@@ -296,7 +307,7 @@ class PortableSQLiteService {
     const blob = new Blob([JSON.stringify(package_data, null, 2)], {
       type: 'application/json'
     })
-    
+
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url

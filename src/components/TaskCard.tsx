@@ -72,6 +72,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
           {getPriorityTag(task.priority)}
         </div>
 
+        {task.productCode && (
+          <div style={{ marginBottom: 4 }}>
+            <Text type="secondary" style={{ fontSize: '11px' }}>
+              零件图号: {task.productCode}
+            </Text>
+          </div>
+        )}
+
         <Space direction="vertical" size={4} style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <ClockCircleOutlined style={{ marginRight: 4, color: '#8c8c8c' }} />
@@ -90,15 +98,40 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <CalendarOutlined style={{ marginRight: 4, color: '#8c8c8c' }} />
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              {task.batchNumber}
+              批次号: {task.batchNumber}
             </Text>
           </div>
+
+          {task.processOrderId && (
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                委托单: {task.processOrderId}
+              </Text>
+            </div>
+          )}
+
+          {task.quantity && (
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                数量: {task.quantity}
+              </Text>
+            </div>
+          )}
         </Space>
 
         <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #f0f0f0' }}>
           <Text type="secondary" style={{ fontSize: '11px' }}>
-            {task.clientName} · {task.commitTime}
+            客户: {task.clientName} · 提交: {task.commitTime}
           </Text>
+          {(task.assignedPerson || task.assignedTeam) && (
+            <div style={{ marginTop: 2 }}>
+              <Text type="secondary" style={{ fontSize: '10px' }}>
+                {task.assignedPerson && `委托人: ${task.assignedPerson}`}
+                {task.assignedPerson && task.assignedTeam && ' · '}
+                {task.assignedTeam && `班组: ${task.assignedTeam}`}
+              </Text>
+            </div>
+          )}
         </div>
       </div>
     </Card>

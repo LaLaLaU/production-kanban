@@ -1,6 +1,6 @@
 import { FontSizeOutlined } from '@ant-design/icons'
-import { Button, Dropdown, Space, Typography } from 'antd'
 import type { MenuProps } from 'antd'
+import { Button, Dropdown, Space, Typography } from 'antd'
 import React, { useEffect, useState } from 'react'
 
 const { Text } = Typography
@@ -11,7 +11,9 @@ const FONT_SIZE_OPTIONS = [
   { key: 'normal', label: '标准字体', scale: 1.0 },
   { key: 'large', label: '大号字体', scale: 1.15 },
   { key: 'xlarge', label: '超大字体', scale: 1.3 },
-  { key: 'xxlarge', label: '巨大字体', scale: 1.5 }
+  { key: 'xxlarge', label: '巨大字体', scale: 1.5 },
+  { key: 'xxxlarge', label: '特大字体', scale: 1.7 },
+  { key: 'xxxxlarge', label: '极大字体', scale: 2.0 }
 ]
 
 const STORAGE_KEY = 'kanban-font-size'
@@ -38,10 +40,10 @@ const FontSizeSettings: React.FC<FontSizeSettingsProps> = ({ className }) => {
     if (option) {
       const root = document.documentElement
       root.style.setProperty('--font-scale', option.scale.toString())
-      
+
       // 应用到body的基础字体大小
       document.body.style.fontSize = `${14 * option.scale}px`
-      
+
       // 为大屏幕优化：调整整体缩放
       if (option.scale >= 1.3) {
         root.style.setProperty('--content-scale', (option.scale * 0.9).toString())
@@ -56,7 +58,7 @@ const FontSizeSettings: React.FC<FontSizeSettingsProps> = ({ className }) => {
     setCurrentSize(sizeKey)
     applyFontSize(sizeKey)
     localStorage.setItem(STORAGE_KEY, sizeKey)
-    
+
     const option = FONT_SIZE_OPTIONS.find(opt => opt.key === sizeKey)
     if (option) {
       // 显示提示信息
@@ -72,7 +74,7 @@ const FontSizeSettings: React.FC<FontSizeSettingsProps> = ({ className }) => {
     key: option.key,
     label: (
       <Space>
-        <span style={{ 
+        <span style={{
           fontSize: `${14 * option.scale}px`,
           fontWeight: currentSize === option.key ? 'bold' : 'normal',
           color: currentSize === option.key ? '#1890ff' : 'inherit'
@@ -96,7 +98,7 @@ const FontSizeSettings: React.FC<FontSizeSettingsProps> = ({ className }) => {
       trigger={['click']}
       className={className}
     >
-      <Button 
+      <Button
         icon={<FontSizeOutlined />}
         title="调整字体大小"
         style={{

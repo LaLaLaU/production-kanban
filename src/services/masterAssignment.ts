@@ -78,6 +78,8 @@ export class MasterAssignmentService {
         if (recommendedMaster) {
           return { ...task, masterName: recommendedMaster }
         }
+        // 如果没有找到推荐师傅，确保设置为'待分配'
+        return { ...task, masterName: '待分配' }
       }
       return task
     })

@@ -1,6 +1,6 @@
 
-import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd'
 import { SortDescendingOutlined, UnorderedListOutlined } from '@ant-design/icons'
+import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd'
 import React, { useEffect, useMemo, useState } from 'react'
 import type { Task } from '../types'
 import GanttWaterLevel from './GanttWaterLevel'
@@ -13,25 +13,25 @@ interface MasterGanttViewProps {
   onTasksChange?: (tasks: Task[]) => void
 }
 
-// 17名师傅的固定列表
+// 17名师傅的固定列表（包含待分配选项）
 const MASTERS = [
-  '潘敏', '黄尚斌', '钱伟', '蒋怀东', '江峰', '谢守刚', '周博', '秦龙', '王章良',
+  '待分配', '潘敏', '黄尚斌', '钱伟', '蒋怀东', '江峰', '谢守刚', '周博', '秦龙', '王章良',
   '叶佩珺', '李雪', '昂洪涛', '刘庆', '王家龙', '叶建辉', '魏祯', '杨同'
 ]
 
-// 根据委托时间获取颜色（与水位效果一致）
-const getTimeBasedColor = (commitTime: string): string => {
-  if (!commitTime) return 'rgba(200, 200, 200, 0.8)' // 默认灰色
+// 根据送达时间获取颜色（与水位效果一致）
+const getTimeBasedColor = (deliveryTime: string): string => {
+  if (!deliveryTime) return 'rgba(200, 200, 200, 0.8)' // 默认灰色
 
   try {
-    const commitDate = new Date(commitTime)
+    const deliveryDate = new Date(deliveryTime)
     const now = new Date()
 
-    if (isNaN(commitDate.getTime())) {
+    if (isNaN(deliveryDate.getTime())) {
       return 'rgba(200, 200, 200, 0.8)' // 无效日期时使用灰色
     }
 
-    const diffTime = Math.abs(now.getTime() - commitDate.getTime())
+    const diffTime = Math.abs(now.getTime() - deliveryDate.getTime())
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     const maxDays = 4 // 与水位效果保持一致
     const ratio = diffDays / maxDays
@@ -70,7 +70,8 @@ const TaskBar: React.FC<{
   pixelsPerMinute?: number // 每分钟像素数
 }> = ({ task, onEdit, barHeight = 16, pixelsPerMinute = 1.5 }) => {
   const taskCoefficient = task.coefficient || 1 // 使用任务自己的系数
-  const adjustedWorkHours = task.workHours * taskCoefficient
+  const quantity = task.quantity || 1 // 任务数量，默认为1
+  const adjustedWorkHours = task.workHours * taskCoefficient * quantity
 
         // 使用自适应像素宽度计算，支持横向滚动
   const baseWidth = adjustedWorkHours * pixelsPerMinute
@@ -78,9 +79,9 @@ const TaskBar: React.FC<{
   const width = adjustedWorkHours < 5 ? minWidth : baseWidth // 小于5分钟时使用固定宽度
 
 
-  // 紧急任务显示高亮红色，其他任务根据委托时间显示颜色
+  // 紧急任务显示高亮红色，其他任务根据送达时间显示颜色
   const isUrgent = isUrgentTask(task.priority)
-  const taskColor = isUrgent ? '#ff4d4f' : getTimeBasedColor(task.commitTime)
+  const taskColor = isUrgent ? '#ff4d4f' : getTimeBasedColor(task.deliveryTime || task.commitTime)
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -94,13 +95,16 @@ const TaskBar: React.FC<{
           <div><strong>{task.productName}</strong></div>
           <div>架次号: {task.batchNumber}</div>
           <div>委托方: {task.clientName}</div>
-          <div>原始工时: {task.workHours}分钟</div>
+          <div>单个工时: {task.workHours}分钟</div>
+          <div>数量: {quantity}个</div>
           <div>工时系数: {taskCoefficient}x</div>
-          <div><strong>实际工时: {adjustedWorkHours.toFixed(0)}分钟</strong></div>
+          <div><strong>总工时: {adjustedWorkHours.toFixed(0)}分钟</strong></div>
+          <div style={{ fontSize: '10px', color: '#666' }}>
+            ({task.workHours} × {quantity} × {taskCoefficient} = {adjustedWorkHours.toFixed(0)})
+          </div>
           <div>任务条长度: {width}px</div>
-          <div>委托时间: {task.commitTime}</div>
+          <div>送达时间: {task.deliveryTime || task.commitTime}</div>
           <div>优先级: {task.priority}</div>
-          <div>状态: {task.status === 'pending' ? '待处理' : task.status === 'inProgress' ? '进行中' : '已完成'}</div>
           <div style={{ color: '#1890ff', fontSize: '11px', marginTop: '4px' }}>
             双击任务可编辑系数
           </div>
@@ -118,7 +122,7 @@ const TaskBar: React.FC<{
           position: 'relative',
           cursor: 'pointer',
           border: task.masterName === '待分配' ? '2px solid #ff4d4f' :
-                 task.status === 'inProgress' ? '1px solid #1890ff' : `1px solid ${taskColor}`,
+                 task.status === 'in-progress' ? '1px solid #1890ff' : `1px solid ${taskColor}`,
           opacity: task.status === 'completed' ? 0.7 : 1,
           display: 'inline-block',
           verticalAlign: 'top',
@@ -130,7 +134,7 @@ const TaskBar: React.FC<{
       >
         {/* 水位指示器 */}
         <GanttWaterLevel
-          commitTime={task.commitTime}
+          commitTime={task.deliveryTime || task.commitTime}
           width={width}
           height={barHeight}
           maxDays={4}
@@ -176,11 +180,15 @@ const MasterRow: React.FC<{
   ranking?: number
   totalWorkHours?: number
 }> = ({ masterName, tasks, onEditTask, rowHeight, pixelsPerMinute, showRanking = false, ranking, totalWorkHours }) => {
-  // 按委托时间排序任务，过滤掉已完成的任务
+  // 按送达时间排序任务，过滤掉已完成的任务
   const sortedTasks = useMemo(() => {
     return tasks
       .filter(task => task.masterName === masterName && task.status !== 'completed')
-      .sort((a, b) => new Date(a.commitTime).getTime() - new Date(b.commitTime).getTime())
+      .sort((a, b) => {
+        const dateA = new Date(a.deliveryTime || a.commitTime).getTime()
+        const dateB = new Date(b.deliveryTime || b.commitTime).getTime()
+        return dateA - dateB
+      })
   }, [tasks, masterName])
 
   return (
@@ -322,6 +330,8 @@ const MasterRow: React.FC<{
 }
 
 const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange }) => {
+  console.log('🎯 MasterGanttView 接收到的任务数量:', tasks.length)
+  console.log('🎯 前3个任务详情:', tasks.slice(0, 3))
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [containerHeight, setContainerHeight] = useState(0)
@@ -370,12 +380,18 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
     setEditModalVisible(true)
   }
 
-  const handleSaveTask = (updatedTask: Task) => {
+  const handleSaveTask = async (updatedTask: Task) => {
+    console.log('🔍 MasterGanttView - 保存任务，任务ID:', updatedTask.id)
+    console.log('🔍 任务数据:', JSON.stringify(updatedTask, null, 2))
+    
+    // 只需要调用onTasksChange，它会负责保存到数据库和更新内存
     if (onTasksChange) {
       const updatedTasks = tasks.map(task =>
         task.id === updatedTask.id ? updatedTask : task
       )
+      // App.tsx的handleTasksChange会负责保存到数据库
       onTasksChange(updatedTasks)
+      console.log('✅ 已调用onTasksChange，由App组件负责保存')
     }
   }
 
@@ -397,7 +413,8 @@ const MasterGanttView: React.FC<MasterGanttViewProps> = ({ tasks, onTasksChange 
       )
       const totalWorkHours = masterTasks.reduce((sum, task) => {
         const coefficient = task.coefficient || 1
-        return sum + (task.workHours * coefficient)
+        const quantity = task.quantity || 1
+        return sum + (task.workHours * coefficient * quantity)
       }, 0)
 
       return {

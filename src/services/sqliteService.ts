@@ -65,7 +65,7 @@ class SQLiteService {
   constructor(config: Partial<SQLiteConfig> = {}) {
     this.config = {
       dbName: 'production_kanban.db',
-      version: 1,
+      version: 2,
       wasmPath: './sql.js-wasm/',
       ...config
     }
@@ -100,7 +100,9 @@ class SQLiteService {
       // 尝试从本地存储恢复数据库
       console.log('🔄 检查本地存储中的数据库...')
       const savedDb = localStorage.getItem('sqlite_db_data')
-      if (savedDb) {
+      const savedVersion = localStorage.getItem('sqlite_db_version')
+      
+      if (savedDb && savedVersion && parseInt(savedVersion) === this.config.version) {
         try {
           console.log('📥 从本地存储恢复数据库...')
           const uint8Array = new Uint8Array(
@@ -113,6 +115,9 @@ class SQLiteService {
           this.db = new this.SQL.Database()
         }
       } else {
+        if (savedDb && savedVersion) {
+          console.log(`🔄 数据库版本从 ${savedVersion} 升级到 ${this.config.version}`)
+        }
         console.log('🆕 创建新的SQLite数据库')
         this.db = new this.SQL.Database()
       }
@@ -160,6 +165,14 @@ class SQLiteService {
         commit_time TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'pending',
         priority INTEGER DEFAULT 1,
+        -- 新增字段
+        process_order_id TEXT,
+        factory_code TEXT,
+        order_date TEXT,
+        delivery_time TEXT,
+        quantity INTEGER,
+        assigned_person TEXT,
+        assigned_team TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
@@ -355,14 +368,17 @@ class SQLiteService {
         INSERT OR REPLACE INTO tasks (
           id, product_name, product_code, work_hours, coefficient,
           master_name, batch_number, client_name, commit_time,
-          status, priority, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+          status, priority, process_order_id, factory_code, order_date,
+          delivery_time, quantity, assigned_person, assigned_team, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       `
 
       this.db!.run(sql, [
         task.id, task.productName, task.productCode || null, task.workHours,
         task.coefficient || 1, task.masterName, task.batchNumber,
-        task.clientName, task.commitTime, task.status, task.priority || 1
+        task.clientName, task.commitTime, task.status, task.priority || 1,
+        task.processOrderId || null, task.factoryCode || null, task.orderDate || null,
+        task.deliveryTime || null, task.quantity || null, task.assignedPerson || null, task.assignedTeam || null
       ])
 
       // 记录变更历史
@@ -411,14 +427,17 @@ class SQLiteService {
             INSERT OR REPLACE INTO tasks (
               id, product_name, product_code, work_hours, coefficient,
               master_name, batch_number, client_name, commit_time,
-              status, priority, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+              status, priority, process_order_id, factory_code, order_date,
+              delivery_time, quantity, assigned_person, assigned_team, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
           `
 
           this.db!.run(sql, [
             task.id, task.productName, task.productCode || null, task.workHours,
             task.coefficient || 1, task.masterName, task.batchNumber,
-            task.clientName, task.commitTime, task.status, task.priority || 1
+            task.clientName, task.commitTime, task.status, task.priority || 1,
+            task.processOrderId || null, task.factoryCode || null, task.orderDate || null,
+            task.deliveryTime || null, task.quantity || null, task.assignedPerson || null, task.assignedTeam || null
           ])
 
           successCount++
@@ -564,7 +583,7 @@ class SQLiteService {
           COUNT(*) as total_tasks,
           SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
           SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_tasks,
-          SUM(CASE WHEN status = 'inProgress' THEN 1 ELSE 0 END) as in_progress_tasks,
+          SUM(CASE WHEN status = 'in-progress' THEN 1 ELSE 0 END) as in_progress_tasks,
           AVG(CASE WHEN status = 'completed' THEN work_hours * coefficient ELSE NULL END) as avg_completion_time
         FROM tasks ${whereClause}
       `
@@ -809,8 +828,9 @@ class SQLiteService {
       const base64 = btoa(String.fromCharCode(...data))
       localStorage.setItem('sqlite_db_data', base64)
 
-      // 更新最后保存时间
+      // 更新最后保存时间和版本
       localStorage.setItem('sqlite_last_save', new Date().toISOString())
+      localStorage.setItem('sqlite_db_version', String(this.config.version))
     } catch (error) {
       console.error('保存数据库到本地存储失败:', error)
     }
@@ -928,7 +948,15 @@ class SQLiteService {
         clientName: task.clientName,
         commitTime: task.commitTime,
         status: task.status,
-        priority: task.priority || 1
+        priority: task.priority || 1,
+        // 新增字段
+        processOrderId: task.processOrderId,
+        factoryCode: task.factoryCode,
+        orderDate: task.orderDate,
+        deliveryTime: task.deliveryTime,
+        quantity: task.quantity,
+        assignedPerson: task.assignedPerson,
+        assignedTeam: task.assignedTeam
       } as Task
     })
   }

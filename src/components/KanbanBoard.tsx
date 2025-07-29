@@ -56,7 +56,7 @@ const mockTasks: Task[] = [
     batchNumber: 'C003-2024',
     clientName: '航空公司C',
     commitTime: '2024-01-08',
-    status: 'inProgress',
+    status: 'in-progress',
     priority: 6
   },
   {
@@ -90,7 +90,7 @@ const mockTasks: Task[] = [
     batchNumber: 'F006-2024',
     clientName: '航空公司F',
     commitTime: '2024-01-11',
-    status: 'inProgress',
+    status: 'in-progress',
     priority: 7
   },
   {
@@ -134,7 +134,7 @@ const mockTasks: Task[] = [
     batchNumber: 'J010-2024',
     clientName: '航空公司J',
     commitTime: '2024-01-15',
-    status: 'inProgress',
+    status: 'in-progress',
     priority: 8
   },
   {
@@ -250,11 +250,11 @@ const KanbanBoard: React.FC<{
     const taskId = active.id as string
     const newStatus = over.id as Task['status']
 
-    if (newStatus === 'pending' || newStatus === 'inProgress' || newStatus === 'completed') {
+    if (newStatus === 'pending' || newStatus === 'in-progress' || newStatus === 'completed') {
       const updatedTasks = tasks.map(task => {
         if (task.id === taskId) {
           const updatedTask = { ...task, status: newStatus }
-          if (newStatus === 'inProgress' && task.masterName && task.masterName !== '待分配') {
+          if (newStatus === 'in-progress' && task.masterName && task.masterName !== '待分配') {
             MasterAssignmentService.learnFromTaskUpdate(updatedTask)
           }
           return updatedTask
@@ -297,9 +297,9 @@ const KanbanBoard: React.FC<{
     },
     {
       title: '进行中',
-      status: 'inProgress' as const,
+      status: 'in-progress' as const,
       color: '#1890ff',
-      tasks: getTasksByStatus('inProgress')
+      tasks: getTasksByStatus('in-progress')
     },
     {
       title: '已完成',

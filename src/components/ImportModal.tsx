@@ -1,21 +1,21 @@
-import React, { useState } from 'react'
-import {
-  Modal,
-  Upload,
-  Button,
-  Table,
-  Select,
-  Space,
-  Typography,
-  Alert,
-  Steps,
-  Row,
-  Col,
-  Statistic,
-  message
-} from 'antd'
 import { InboxOutlined } from '@ant-design/icons'
 import type { UploadFile, UploadProps } from 'antd'
+import {
+    Alert,
+    Button,
+    Col,
+    Modal,
+    Row,
+    Select,
+    Space,
+    Statistic,
+    Steps,
+    Table,
+    Typography,
+    Upload,
+    message
+} from 'antd'
+import React, { useState } from 'react'
 import { FileImportService } from '../services/fileImport'
 import { MasterAssignmentService } from '../services/masterAssignment'
 import type { Task } from '../types'
@@ -25,9 +25,9 @@ const { Text } = Typography
 const { Dragger } = Upload
 const { Step } = Steps
 
-// 17名师傅列表
+// 17名师傅列表（包含待分配选项）
 const MASTERS = [
-  '潘敏', '黄尚斌', '钱伟', '蒋怀东', '江峰', '谢守刚', '周博', '秦龙', '王章良',
+  '待分配', '潘敏', '黄尚斌', '钱伟', '蒋怀东', '江峰', '谢守刚', '周博', '秦龙', '王章良',
   '叶佩珺', '李雪', '昂洪涛', '刘庆', '王家龙', '叶建辉', '魏祯', '杨同'
 ]
 
@@ -54,6 +54,14 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onImport }
     { label: '委托方', value: 'clientName' },
     { label: '委托时间', value: 'commitTime' },
     { label: '优先级', value: 'priority' },
+    // 新增字段选项
+    { label: '委托加工单ID', value: 'processOrderId' },
+    { label: '工厂编号', value: 'factoryCode' },
+    { label: '委托日期', value: 'orderDate' },
+    { label: '送达时间', value: 'deliveryTime' },
+    { label: '数量', value: 'quantity' },
+    { label: '委托人', value: 'assignedPerson' },
+    { label: '委托班组', value: 'assignedTeam' },
     { label: '不导入', value: '' }
   ]
 
@@ -71,12 +79,12 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onImport }
         const data = await FileImportService.parseFile(file as unknown as File)
         const extractedHeaders = FileImportService.extractHeaders(data)
         const detectedMapping = FileImportService.detectColumnMapping(extractedHeaders)
-        
+
         setFileData(data)
         setHeaders(extractedHeaders)
         setColumnMapping(detectedMapping)
         setCurrentStep(1)
-        
+
         message.success(`成功解析文件，检测到 ${extractedHeaders.length} 列数据`)
       } catch (error) {
         message.error(`文件解析失败: ${error}`)
@@ -102,7 +110,7 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onImport }
       setAllTasks(tasks) // 保存所有任务
       setPreviewTasks(tasks.slice(0, 10)) // 只显示前10条预览
       setCurrentStep(2)
-      
+
       const stats = MasterAssignmentService.getAssignmentStats(tasks)
       message.success(`成功映射数据，将导入 ${tasks.length} 条任务，其中 ${stats.autoAssigned} 条已智能分配师傅（${stats.byProductCode} 条通过产品图号，${stats.byProductName} 条通过产品名称）`)
     } catch (error) {
@@ -113,13 +121,13 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onImport }
   // 处理单个任务的责任人变更
   const handleTaskMasterChange = (taskId: string, newMaster: string) => {
     // 更新所有任务数据
-    const updatedAllTasks = allTasks.map(task => 
+    const updatedAllTasks = allTasks.map(task =>
       task.id === taskId ? { ...task, masterName: newMaster } : task
     )
     setAllTasks(updatedAllTasks)
-    
+
     // 更新预览数据
-    const updatedPreviewTasks = previewTasks.map(task => 
+    const updatedPreviewTasks = previewTasks.map(task =>
       task.id === taskId ? { ...task, masterName: newMaster } : task
     )
     setPreviewTasks(updatedPreviewTasks)
@@ -133,13 +141,13 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onImport }
           MasterAssignmentService.updateAssignment(task.productName, task.masterName, task.productCode)
         }
       })
-      
+
       onImport(allTasks) // 导入所有任务（包括用户修改的责任人）
-      
+
       const stats = MasterAssignmentService.getAssignmentStats(allTasks)
       handleReset()
       onCancel()
-      
+
       message.success(`成功导入 ${allTasks.length} 条任务！智能分配 ${stats.autoAssigned} 条（产品图号匹配 ${stats.byProductCode} 条，产品名称匹配 ${stats.byProductName} 条），手动分配 ${stats.manual} 条。系统已学习您的分配选择。`)
     } catch (error) {
       message.error(`导入失败: ${error}`)
@@ -192,9 +200,9 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onImport }
     { title: '产品名称', dataIndex: 'productName', key: 'productName' },
     { title: '产品图号', dataIndex: 'productCode', key: 'productCode' },
     { title: '工时', dataIndex: 'workHours', key: 'workHours' },
-    { 
-      title: '责任人', 
-      dataIndex: 'masterName', 
+    {
+      title: '责任人',
+      dataIndex: 'masterName',
       key: 'masterName',
       render: (masterName: string, record: Task) => (
         <Select
@@ -269,8 +277,8 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onImport }
           />
           <Space>
             <Button onClick={() => setCurrentStep(0)}>上一步</Button>
-            <Button 
-              type="primary" 
+            <Button
+              type="primary"
               onClick={generatePreview}
               disabled={Object.values(columnMapping).filter(v => v).length === 0}
             >
@@ -290,16 +298,16 @@ const ImportModal: React.FC<ImportModalProps> = ({ visible, onCancel, onImport }
               <Statistic title="将导入任务" value={allTasks.length} />
             </Col>
             <Col span={6}>
-              <Statistic 
-                title="智能分配" 
-                value={MasterAssignmentService.getAssignmentStats(allTasks).autoAssigned} 
+              <Statistic
+                title="智能分配"
+                value={MasterAssignmentService.getAssignmentStats(allTasks).autoAssigned}
                 valueStyle={{ color: '#3f8600' }}
               />
             </Col>
             <Col span={6}>
-              <Statistic 
-                title="待手动分配" 
-                value={MasterAssignmentService.getAssignmentStats(allTasks).manual} 
+              <Statistic
+                title="待手动分配"
+                value={MasterAssignmentService.getAssignmentStats(allTasks).manual}
                 valueStyle={{ color: '#cf1322' }}
               />
             </Col>

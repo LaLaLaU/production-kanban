@@ -1,5 +1,5 @@
-import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
+import * as XLSX from 'xlsx'
 import type { Task } from '../types'
 import type { ColumnMapping } from '../types/import'
 
@@ -40,7 +40,7 @@ export class FileImportService {
 
   static async parseFile(file: File): Promise<unknown[][]> {
     const extension = file.name.split('.').pop()?.toLowerCase()
-    
+
     switch (extension) {
       case 'xlsx':
       case 'xls':
@@ -77,6 +77,19 @@ export class FileImportService {
           }
         })
 
+        // 处理状态字段映射
+        let taskStatus: 'pending' | 'in-progress' | 'completed' = 'pending'
+        if (rowData.status) {
+          const statusStr = String(rowData.status).toLowerCase()
+          if (statusStr.includes('进行') || statusStr.includes('processing') || statusStr.includes('progress')) {
+            taskStatus = 'in-progress'
+          } else if (statusStr.includes('完成') || statusStr.includes('completed') || statusStr.includes('done')) {
+            taskStatus = 'completed'
+          } else if (statusStr.includes('待') || statusStr.includes('pending') || statusStr.includes('wait')) {
+            taskStatus = 'pending'
+          }
+        }
+
         return {
           id: `imported-${Date.now()}-${index}`,
           productName: String(rowData.productName || '未知产品'),
@@ -86,8 +99,16 @@ export class FileImportService {
           batchNumber: String(rowData.batchNumber || `BATCH-${Date.now()}`),
           clientName: String(rowData.clientName || '未知委托方'),
           commitTime: String(rowData.commitTime || new Date().toISOString().split('T')[0]),
-          status: 'pending' as const,
-          priority: parseInt(String(rowData.priority)) || 1
+          status: taskStatus,
+          priority: parseInt(String(rowData.priority)) || 1,
+          // 新增字段映射
+          processOrderId: rowData.processOrderId ? String(rowData.processOrderId) : undefined,
+          factoryCode: rowData.factoryCode ? String(rowData.factoryCode) : undefined,
+          orderDate: rowData.orderDate ? String(rowData.orderDate) : undefined,
+          deliveryTime: rowData.deliveryTime ? String(rowData.deliveryTime) : undefined,
+          quantity: rowData.quantity ? parseInt(String(rowData.quantity)) : undefined,
+          assignedPerson: rowData.assignedPerson ? String(rowData.assignedPerson) : undefined,
+          assignedTeam: rowData.assignedTeam ? String(rowData.assignedTeam) : undefined
         }
       })
   }
@@ -108,21 +129,30 @@ export class FileImportService {
   static detectColumnMapping(headers: string[]): ColumnMapping {
     const mapping: ColumnMapping = {}
     const keywords = {
-      productName: ['产品', '产品名', '产品名称', '名称', 'product', 'name'],
-      productCode: ['产品图号', '图号', '型号', '编号', '产品编号', 'code', 'model', 'number'],
+      productName: ['零件名称', '产品', '产品名', '产品名称', '名称', 'product', 'name'],
+      productCode: ['零件图号', '产品图号', '图号', '型号', '编号', '产品编号', 'code', 'model', 'number'],
       workHours: ['工时', '时间', '小时', '分钟', 'hours', 'time', 'duration'],
       masterName: ['师傅', '工人', '操作员', '负责人', 'master', 'worker', 'operator'],
       batchNumber: ['架次', '批次', '架次号', '批次号', 'batch', 'lot'],
       clientName: ['委托方', '客户', '公司', 'client', 'customer', 'company'],
       commitTime: ['委托时间', '下达时间', '时间', 'date', 'time', 'commit'],
-      priority: ['优先级', '紧急度', 'priority', 'urgent']
+      priority: ['优先级', '紧急度', 'priority', 'urgent'],
+      // 根据真实词条更新的关键词识别
+      processOrderId: ['委托加工单ID'],
+      factoryCode: ['工厂编号'],
+      orderDate: ['委托日期'],
+      deliveryTime: ['送达时间'],
+      quantity: ['数量'],
+      assignedPerson: ['委托人'],
+      assignedTeam: ['委托班组'],
+      status: ['状态']
     }
 
     headers.forEach(header => {
       const normalizedHeader = header.toLowerCase().trim()
-      
+
       Object.entries(keywords).forEach(([field, synonyms]) => {
-        if (synonyms.some(keyword => 
+        if (synonyms.some(keyword =>
           normalizedHeader.includes(keyword.toLowerCase()) ||
           keyword.toLowerCase().includes(normalizedHeader)
         )) {
